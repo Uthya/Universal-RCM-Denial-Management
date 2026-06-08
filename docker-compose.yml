@@ -1,0 +1,46 @@
+services:
+  postgres:
+    # pgvector pre-built; pg_partman / pg_cron not included — needed only in prod
+    image: pgvector/pgvector:pg16
+    container_name: rcm-postgres
+    environment:
+      POSTGRES_USER: rcm
+      POSTGRES_PASSWORD: rcm_dev_password
+      POSTGRES_DB: rcm_denials_dev
+      # Generous-for-dev settings; production cluster has its own tighter values
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    command: >
+      postgres
+      -c shared_buffers=256MB
+      -c maintenance_work_mem=256MB
+      -c max_wal_size=2GB
+      -c work_mem=16MB
+      -c max_connections=100
+      -c log_min_duration_statement=200
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rcm -d rcm_denials_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: rcm-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --save 60 1 --loglevel warning
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  postgres-data:
+  redis-data:

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PYTHONPATH=src python -c ' *)",
+      "Bash(PYTHONPATH=src python scripts/bench_parser.py)"
+    ]
+  }
+}

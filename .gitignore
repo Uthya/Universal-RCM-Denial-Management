@@ -1,0 +1,60 @@
+# Secrets — only .env.example is committed
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Virtual envs
+.venv/
+venv/
+env/
+ENV/
+
+# uv / pip
+.uv-cache/
+uv.lock
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# ML artifacts (kept out of git; produced by training runs)
+src/rcm/ml/artifacts/*/
+!src/rcm/ml/artifacts/.gitkeep
+
+# Local data (raw EDI dumps, dev fixtures with PHI, etc.)
+data/
+*.dump
+*.bak
+
+# DB volumes mounted by docker-compose
+postgres-data/
+redis-data/
+
+# Alembic
+src/migrations/versions/__pycache__/
