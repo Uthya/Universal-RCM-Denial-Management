@@ -1,0 +1,186 @@
+{
+  "stats": {
+    "claim_certifications": {
+      "relname": "claim_certifications",
+      "n_live_tup": 0,
+      "n_dead_tup": 0,
+      "n_mod_since_analyze": 0,
+      "last_vacuum": null,
+      "last_autovacuum": null,
+      "last_analyze": null,
+      "last_autoanalyze": null,
+      "reltuples": 7007
+    },
+    "claim_lines": {
+      "relname": "claim_lines",
+      "n_live_tup": 0,
+      "n_dead_tup": 0,
+      "n_mod_since_analyze": 0,
+      "last_vacuum": null,
+      "last_autovacuum": null,
+      "last_analyze": null,
+      "last_autoanalyze": null,
+      "reltuples": 57058
+    },
+    "code_masters": {
+      "relname": "code_masters",
+      "n_live_tup": 0,
+      "n_dead_tup": 0,
+      "n_mod_since_analyze": 0,
+      "last_vacuum": null,
+      "last_autovacuum": null,
+      "last_analyze": null,
+      "last_autoanalyze": null,
+      "reltuples": 1506
+    },
+    "diagnoses": {
+      "relname": "diagnoses",
+      "n_live_tup": 0,
+      "n_dead_tup": 0,
+      "n_mod_since_analyze": 0,
+      "last_vacuum": null,
+      "last_autovacuum": null,
+      "last_analyze": null,
+      "last_autoanalyze": null,
+      "reltuples": 39308
+    },
+    "edi_files": {
+      "relname": "edi_files",
+      "n_live_tup": 85,
+      "n_dead_tup": 292,
+      "n_mod_since_analyze": 133,
+      "last_vacuum": null,
+      "last_autovacuum": null,
+      "last_analyze": null,
+      "last_autoanalyze": null,
+      "reltuples": 3892
+    },
+    "home_care_episodes": {
+      "relname": "home_care_episodes",
+      "n_live_tup": 0,
+      "n_dead_tup": 0,
+      "n_mod_since_analyze": 0,
+      "last_vacuum": null,
+      "last_autovacuum": null,
+      "last_analyze": null,
+      "last_autoanalyze": null,
+      "reltuples": 7007
+    },
+    "parse_events": {
+      "relname": "parse_events",
+      "n_live_tup": 0,
+      "n_dead_tup": 0,
+      "n_mod_since_analyze": 0,
+      "last_vacuum": null,
+      "last_autovacuum": null,
+      "last_analyze": null,
+      "last_autoanalyze": null,
+      "reltuples": -1
+    },
+    "parse_events_p2026_06": {
+      "relname": "parse_events_p2026_06",
+      "n_live_tup": 2359,
+      "n_dead_tup": 0,
+      "n_mod_since_analyze": 2359,
+      "last_vacuum": null,
+      "last_autovacuum": null,
+      "last_analyze": null,
+      "last_autoanalyze": null,
+      "reltuples": 136628
+    },
+    "patients": {
+      "relname": "patients",
+      "n_live_tup": 0,
+      "n_dead_tup": 0,
+      "n_mod_since_analyze": 0,
+      "last_vacuum": null,
+      "last_autovacuum": null,
+      "last_analyze": null,
+      "last_autoanalyze": null,
+      "reltuples": 10261
+    },
+    "payers": {
+      "relname": "payers",
+      "n_live_tup": 0,
+      "n_dead_tup": 0,
+      "n_mod_since_analyze": 0,
+      "last_vacuum": null,
+      "last_autovacuum": null,
+      "last_analyze": null,
+      "last_autoanalyze": null,
+      "reltuples": -1
+    },
+    "pending_pair_registry": {
+      "relname": "pending_pair_registry",
+      "n_live_tup": 0,
+      "n_dead_tup": 0,
+      "n_mod_since_analyze": 0,
+      "last_vacuum": null,
+      "last_autovacuum": null,
+      "last_analyze": null,
+      "last_autoanalyze": null,
+      "reltuples": 2186
+    },
+    "providers": {
+      "relname": "providers",
+      "n_live_tup": 0,
+      "n_dead_tup": 0,
+      "n_mod_since_analyze": 0,
+      "last_vacuum": null,
+      "last_autovacuum": null,
+      "last_analyze": null,
+      "last_autoanalyze": null,
+      "reltuples": -1
+    },
+    "raw_segments": {
+      "relname": "raw_segments",
+      "n_live_tup": 0,
+      "n_dead_tup": 0,
+      "n_mod_since_analyze": 0,
+      "last_vacuum": null,
+      "last_autovacuum": null,
+      "last_analyze": null,
+      "last_autoanalyze": null,
+      "reltuples": -1
+    },
+    "raw_segments_p2026_06": {
+      "relname": "raw_segments_p2026_06",
+      "n_live_tup": 8244,
+      "n_dead_tup": 0,
+      "n_mod_since_analyze": 8244,
+      "last_vacuum": null,
+      "last_autovacuum": null,
+      "last_analyze": null,
+      "last_autoanalyze": null,
+      "reltuples": 796385
+    },
+    "subscribers": {
+      "relname": "subscribers",
+      "n_live_tup": 0,
+      "n_dead_tup": 0,
+      "n_mod_since_analyze": 0,
+      "last_vacuum": null,
+      "last_autovacuum": null,
+      "last_analyze": null,
+      "last_autoanalyze": null,
+      "reltuples": 19925
+    }
+  },
+  "real_count": {
+    "raw_segments": 914894,
+    "parse_events": 143512,
+    "claim_lines": 60859,
+    "diagnoses": 42104,
+    "subscribers": 21358,
+    "patients": 10261,
+    "claim_certifications": 7007,
+    "home_care_episodes": 7007,
+    "edi_files": 4565,
+    "pending_pair_registry": 2186,
+    "code_masters": 1506,
+    "providers": 22,
+    "payers": 13,
+    "raw_segments_p2026_06": 914894,
+    "parse_events_p2026_06": 143512
+  }
+}

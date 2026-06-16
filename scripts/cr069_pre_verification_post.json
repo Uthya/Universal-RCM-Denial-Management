@@ -1,0 +1,118 @@
+{
+  "A": {
+    "label": "A_fresh_serial",
+    "elapsed_sec": 0.8179478000383824,
+    "results_summary": {
+      "ok": 8,
+      "err": 0,
+      "err_samples": []
+    },
+    "counts": {
+      "edi_files": 8,
+      "claims": 80,
+      "claim_lines": 148,
+      "diagnoses": 25,
+      "payers": 5,
+      "patients": 80,
+      "providers": 1,
+      "subscribers": 80
+    }
+  },
+  "B": {
+    "label": "B_fresh_concurrent",
+    "elapsed_sec": 0.6564941999968141,
+    "results_summary": {
+      "ok": 8,
+      "err": 0,
+      "err_samples": []
+    },
+    "counts": {
+      "edi_files": 8,
+      "claims": 80,
+      "claim_lines": 148,
+      "diagnoses": 25,
+      "payers": 5,
+      "patients": 80,
+      "providers": 1,
+      "subscribers": 80
+    }
+  },
+  "C": {
+    "label": "C_warm_serial",
+    "elapsed_sec": 0.7968026000307873,
+    "results_summary": {
+      "ok": 8,
+      "err": 0,
+      "err_samples": []
+    },
+    "counts_delta": {
+      "edi_files": 8,
+      "claims": 80,
+      "claim_lines": 148,
+      "diagnoses": 25,
+      "payers": 0,
+      "patients": 80,
+      "providers": 0,
+      "subscribers": 80
+    },
+    "before": {
+      "edi_files": 8,
+      "claims": 80,
+      "claim_lines": 136,
+      "diagnoses": 36,
+      "payers": 5,
+      "patients": 80,
+      "providers": 1,
+      "subscribers": 80
+    },
+    "after": {
+      "edi_files": 16,
+      "claims": 160,
+      "claim_lines": 284,
+      "diagnoses": 61,
+      "payers": 5,
+      "patients": 160,
+      "providers": 1,
+      "subscribers": 160
+    }
+  },
+  "D": {
+    "label": "D_warm_concurrent",
+    "elapsed_sec": 0.4980154000222683,
+    "results_summary": {
+      "ok": 8,
+      "err": 0,
+      "err_samples": []
+    },
+    "counts_delta": {
+      "edi_files": 8,
+      "claims": 80,
+      "claim_lines": 148,
+      "diagnoses": 25,
+      "payers": 0,
+      "patients": 80,
+      "providers": 0,
+      "subscribers": 80
+    },
+    "before": {
+      "edi_files": 8,
+      "claims": 80,
+      "claim_lines": 136,
+      "diagnoses": 36,
+      "payers": 5,
+      "patients": 80,
+      "providers": 1,
+      "subscribers": 80
+    },
+    "after": {
+      "edi_files": 16,
+      "claims": 160,
+      "claim_lines": 284,
+      "diagnoses": 61,
+      "payers": 5,
+      "patients": 160,
+      "providers": 1,
+      "subscribers": 160
+    }
+  }
+}

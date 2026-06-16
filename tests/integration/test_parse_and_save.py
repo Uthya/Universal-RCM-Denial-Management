@@ -8,12 +8,13 @@ inline. We never read passwords from .env in tests.
 
 from __future__ import annotations
 
+import asyncio
 import os
 from pathlib import Path
 
 import pytest
 import pytest_asyncio
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from rcm.models.claims import Claim, ClaimLine, Diagnosis, Patient, Provider
@@ -109,6 +110,95 @@ class TestParseAndSave837P:
             )).scalar_one()
             await session.delete(ef_again)
             await session.commit()
+
+
+class TestConcurrentMasterDataUpserts:
+    """CR-069: 8-wide concurrent uploads sharing the same master-data
+    (payers / patients / providers) must all succeed.
+
+    Pre-CR-069 this test fails because `_bulk_upsert_*` uses a racy
+    check-then-insert pattern: multiple workers see "row missing", all
+    INSERT, all but one fail with UniqueViolation on the existing
+    `payers.canonical_name`, `patients.member_id`, or `providers.npi`
+    UNIQUE constraints.
+
+    Post-CR-069 every worker uses INSERT...ON CONFLICT DO NOTHING followed
+    by a SELECT, so all workers succeed and return the same id for the
+    shared canonical key.
+    """
+
+    @pytest.mark.asyncio
+    async def test_eight_wide_concurrent_uploads(self):
+        engine = create_async_engine(
+            os.environ["RCM_INTEGRATION_DSN"],
+            pool_pre_ping=True, pool_recycle=60, pool_size=16, max_overflow=4,
+        )
+        Session = async_sessionmaker(
+            engine, class_=AsyncSession, expire_on_commit=False,
+        )
+
+        # 8 payloads that share master-data but have unique content_hash.
+        # Trailing whitespace is stripped by the segment parser but changes
+        # the SHA-256, so each upload bypasses the content_hash dedup.
+        base = (FIXTURE_DIR / "837d_dental_simple.edi").read_bytes()
+        payloads = [
+            (f"int-cr069-race-{i:02d}.edi", base + (b"\n" * (i + 1)))
+            for i in range(8)
+        ]
+
+        async with Session() as s:
+            await _cleanup_test_files(s, "int-cr069-race-")
+
+        async def _upload(name: str, raw: bytes):
+            try:
+                async with Session() as s:
+                    ef = await parse_and_save(s, raw, name)
+                    await s.commit()
+                    return ("ok", int(ef.id), None)
+            except Exception as e:
+                return ("err", None, f"{type(e).__name__}: {str(e)[:200]}")
+
+        try:
+            results = await asyncio.gather(
+                *(_upload(name, raw) for name, raw in payloads)
+            )
+
+            errors = [r for r in results if r[0] != "ok"]
+            assert not errors, (
+                f"Concurrent uploads produced {len(errors)} error(s). "
+                f"Pre-CR-069 this was the expected race; post-CR-069 it must "
+                f"be zero. First failure: {errors[0] if errors else None}"
+            )
+
+            edi_ids = [r[1] for r in results]
+            assert len(set(edi_ids)) == 8, "8 distinct edi_files expected"
+
+            # Verify master-data is shared (not duplicated). For the dental
+            # fixture, every claim points at the same billing-provider NPI;
+            # post-CR-069 there is exactly ONE Provider row for it.
+            async with Session() as s:
+                provider_ids = (await s.execute(
+                    select(Claim.billing_provider_id)
+                    .where(Claim.edi_file_id.in_(edi_ids))
+                    .where(Claim.billing_provider_id.isnot(None))
+                )).scalars().all()
+                assert len(set(provider_ids)) == 1, (
+                    f"Expected all 8 uploads to share one billing provider; "
+                    f"found {len(set(provider_ids))} distinct provider_ids"
+                )
+                # And there is exactly one row in providers for that NPI
+                shared_pid = next(iter(set(provider_ids)))
+                npi = (await s.execute(
+                    select(Provider.npi).where(Provider.id == shared_pid)
+                )).scalar_one()
+                count = (await s.execute(
+                    select(func.count(Provider.id)).where(Provider.npi == npi)
+                )).scalar_one()
+                assert count == 1, f"Provider NPI {npi} duplicated: {count} rows"
+        finally:
+            async with Session() as s:
+                await _cleanup_test_files(s, "int-cr069-race-")
+            await engine.dispose()
 
 
 class TestParseAndSave837INo:

@@ -1,0 +1,1 @@
+{"risk_level":"LOW","risk_score":0.009993842139374464,"prediction_timestamp":"2026-06-16T05:34:37.292518+00:00","top_risk_factors":[{"feature":"Referral number present","direction":"increases denial risk","impact":"0.146"}],"unseen_indicators":{"payer":false,"cpt":false,"dx":false},"model_version":"v1.simple.20260612T083944"}

@@ -1,32 +1,27 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
-import TopBar from './components/layout/TopBar';
 import Sidebar from './components/layout/Sidebar';
 import ErrorBoundary from './components/layout/ErrorBoundary';
-import HomePage from './pages/HomePage';
-import EnvPage from './pages/EnvPage';
-import DatabasePage from './pages/DatabasePage';
-import ParsingTelemetryPage from './pages/ParsingTelemetryPage';
-import EdiInspectorPage from './pages/EdiInspectorPage';
+import UploadPage from './pages/UploadPage';
 import ClaimsPage from './pages/ClaimsPage';
+import ClaimDetailPage from './pages/ClaimDetailPage';
 
-export default function App() {
+function App() {
   return (
-    <div className="min-h-screen bg-slate-50">
-      <TopBar />
+    <div className="min-h-screen bg-gray-50">
       <Sidebar />
-      <main className="ml-56 mt-10 p-4">
+      <main className="ml-64 p-6">
         <ErrorBoundary>
           <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/edi" element={<EdiInspectorPage />} />
+            <Route path="/" element={<Navigate to="/upload" replace />} />
+            <Route path="/upload" element={<UploadPage />} />
             <Route path="/claims" element={<ClaimsPage />} />
-            <Route path="/db" element={<DatabasePage />} />
-            <Route path="/telemetry" element={<ParsingTelemetryPage />} />
-            <Route path="/env" element={<EnvPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="/claims/:id" element={<ClaimDetailPage />} />
+            <Route path="*" element={<Navigate to="/upload" replace />} />
           </Routes>
         </ErrorBoundary>
       </main>
     </div>
   );
 }
+
+export default App;

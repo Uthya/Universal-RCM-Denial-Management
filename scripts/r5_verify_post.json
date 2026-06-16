@@ -1,0 +1,115 @@
+{
+  "status": "GO",
+  "target_file_id": 5825,
+  "http_status": 200,
+  "response_shape_ok": true,
+  "request_latency_seconds": 14.46,
+  "predicted_claims": 33,
+  "risk_summary": {
+    "HIGH": 4,
+    "MEDIUM": 0,
+    "LOW": 29
+  },
+  "prediction_groups": 33,
+  "paired_groups": 33,
+  "simple_only_groups": 0,
+  "production_rows": 33,
+  "shadow_rows": 33,
+  "assertions": {
+    "1_HTTP_200_and_response_shape_preserved": {
+      "pass": true,
+      "detail": "HTTP=200; keys_ok=True"
+    },
+    "2_prediction_log_row_count_consistent": {
+      "pass": true,
+      "detail": "production_rows=33 shadow_rows=33 groups=33 (paired=33, simple_only=0)"
+    },
+    "3_paired_groups_share_prediction_group_id": {
+      "pass": true,
+      "detail": "paired_groups_checked=33"
+    },
+    "4_pipeline_name_values_correct": {
+      "pass": true,
+      "detail": "distinct_pipeline_names=['featurebuilder', 'simple_pipeline']"
+    },
+    "5_prediction_type_values_correct": {
+      "pass": true,
+      "detail": "distinct_prediction_types=['production', 'shadow']"
+    },
+    "6_required_fields_populated": {
+      "pass": true,
+      "detail": "rows_checked=66"
+    },
+    "7_institutional_other_skipped_cleanly": {
+      "pass": true,
+      "detail": "n/a (no institutional_other in this file)"
+    },
+    "8_shadow_exceptions_isolated": {
+      "pass": true,
+      "detail": "simple_only_groups=0 (these are legit shadow skips)"
+    },
+    "9_unit_tests_pass": {
+      "pass": true,
+      "detail": "verified separately (17 unit tests PASS)"
+    },
+    "10_verification_completes": {
+      "pass": true,
+      "detail": "this script ran to completion"
+    }
+  },
+  "score_delta_statistics": {
+    "n_paired_predictions": 33,
+    "max_score_delta": 0.954441,
+    "mean_score_delta": 0.1376650909090909,
+    "p95_score_delta": 0.231819,
+    "min_score_delta": 0.0010000000000000009,
+    "level_agreement_pct": 90.9090909090909
+  },
+  "paired_detail_top5_by_delta": [
+    {
+      "claim_id": 21639,
+      "simple_score": 0.973672,
+      "fb_score": 0.019231,
+      "delta": 0.954441,
+      "simple_level": "HIGH",
+      "fb_level": "LOW",
+      "agree_on_level": false
+    },
+    {
+      "claim_id": 21647,
+      "simple_score": 0.97132,
+      "fb_score": 0.019231,
+      "delta": 0.952089,
+      "simple_level": "HIGH",
+      "fb_level": "LOW",
+      "agree_on_level": false
+    },
+    {
+      "claim_id": 21648,
+      "simple_score": 0.25105,
+      "fb_score": 0.019231,
+      "delta": 0.231819,
+      "simple_level": "HIGH",
+      "fb_level": "LOW",
+      "agree_on_level": false
+    },
+    {
+      "claim_id": 21629,
+      "simple_score": 0.109827,
+      "fb_score": 0.003466,
+      "delta": 0.106361,
+      "simple_level": "LOW",
+      "fb_level": "LOW",
+      "agree_on_level": true
+    },
+    {
+      "claim_id": 21649,
+      "simple_score": 0.101661,
+      "fb_score": 0.003466,
+      "delta": 0.098195,
+      "simple_level": "LOW",
+      "fb_level": "LOW",
+      "agree_on_level": true
+    }
+  ]
+}

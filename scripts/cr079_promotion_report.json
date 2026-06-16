@@ -1,0 +1,200 @@
+{
+  "computed_at": "2026-06-16T09:34:38.006366+00:00",
+  "applied": true,
+  "force_shap": false,
+  "variants": {
+    "837P_healthcare": {
+      "key": "837P_healthcare",
+      "status": "ok",
+      "baseline_held_out": {
+        "n": 7548,
+        "prevalence": 0.21118177000529942,
+        "roc_auc": 0.9979117399013516,
+        "pr_auc": 0.9926163865483629,
+        "f1": 0.9264273101824603,
+        "precision": 0.8725055432372506,
+        "recall": 0.9874529485570891,
+        "accuracy": 0.9668786433492316,
+        "brier_calibrated": 0.005055791232734919,
+        "brier_uncalibrated": 0.00512760691344738,
+        "positive_rate": 0.2390037095919449
+      },
+      "candidate_held_out": {
+        "n": 7548,
+        "prevalence": 0.21118177000529942,
+        "accuracy_at_threshold": 0.964096449390567,
+        "precision_at_threshold": 0.861673045379989,
+        "recall_at_threshold": 0.9887076537013801,
+        "f1_at_threshold": 0.9208296815658779,
+        "roc_auc": 0.9975852615767307,
+        "pr_auc": 0.9918673447777429,
+        "brier_uncalibrated": 0.00519576808437705,
+        "brier_calibrated": 0.005076110828667879,
+        "positive_rate": 0.24231584525702174
+      },
+      "checks": {
+        "d_roc_auc": {
+          "value": -0.00032647832462096016,
+          "threshold": 0.001,
+          "passed": false
+        },
+        "d_pr_auc": {
+          "value": -0.0007490417706200736,
+          "threshold": 0.002,
+          "passed": false
+        },
+        "d_f1": {
+          "value": -0.005597628616582417,
+          "threshold": 0.005,
+          "passed": false
+        },
+        "precision": {
+          "value": 0.861673045379989,
+          "threshold": 0.85,
+          "passed": true
+        },
+        "brier_drift": {
+          "value": 0.4019073374983617,
+          "threshold": 5.0,
+          "passed": true
+        },
+        "shap_overlap_pct": {
+          "value": 70.0,
+          "threshold": 50.0,
+          "passed": true
+        }
+      },
+      "passed": false
+    },
+    "837D_dental": {
+      "key": "837D_dental",
+      "status": "ok",
+      "baseline_held_out": {
+        "n": 230,
+        "prevalence": 0.3739130434782609,
+        "roc_auc": 0.9309593023255813,
+        "pr_auc": 0.9088721566014206,
+        "f1": 0.8771929824561403,
+        "precision": 0.8823529411764706,
+        "recall": 0.872093023255814,
+        "accuracy": 0.908695652173913,
+        "brier_calibrated": 0.08227778226137161,
+        "brier_uncalibrated": 0.0794452503323555,
+        "positive_rate": 0.3695652173913043
+      },
+      "candidate_held_out": {
+        "n": 230,
+        "prevalence": 0.3739130434782609,
+        "accuracy_at_threshold": 0.9043478260869565,
+        "precision_at_threshold": 0.8636363636363636,
+        "recall_at_threshold": 0.8837209302325582,
+        "f1_at_threshold": 0.8735632183908046,
+        "roc_auc": 0.9312822997416019,
+        "pr_auc": 0.9120188147659654,
+        "brier_uncalibrated": 0.07963625341653824,
+        "brier_calibrated": 0.07682133466005325,
+        "positive_rate": 0.3826086956521739
+      },
+      "checks": {
+        "d_roc_auc": {
+          "value": 0.0003229974160205984,
+          "threshold": 0.005,
+          "passed": false
+        },
+        "d_pr_auc": {
+          "value": 0.0031466581645447356,
+          "threshold": 0.01,
+          "passed": false
+        },
+        "d_f1": {
+          "value": -0.003629764065335661,
+          "threshold": 0.01,
+          "passed": false
+        },
+        "precision": {
+          "value": 0.8636363636363636,
+          "threshold": 0.85,
+          "passed": true
+        },
+        "brier_drift": {
+          "value": -6.631738789439994,
+          "threshold": 10.0,
+          "passed": true
+        },
+        "shap_overlap_pct": {
+          "value": 70.0,
+          "threshold": 50.0,
+          "passed": true
+        }
+      },
+      "passed": false
+    },
+    "837I_home_care": {
+      "key": "837I_home_care",
+      "status": "ok",
+      "baseline_held_out": {
+        "n": 114,
+        "prevalence": 0.37719298245614036,
+        "roc_auc": 0.954471012119227,
+        "pr_auc": 0.9251775943312286,
+        "f1": 0.8913043478260869,
+        "precision": 0.8367346938775511,
+        "recall": 0.9534883720930233,
+        "accuracy": 0.9122807017543859,
+        "brier_calibrated": 0.05710384249687195,
+        "brier_uncalibrated": 0.05759267136454582,
+        "positive_rate": 0.4298245614035088
+      },
+      "candidate_held_out": {
+        "n": 114,
+        "prevalence": 0.37719298245614036,
+        "accuracy_at_threshold": 0.9649122807017544,
+        "precision_at_threshold": 0.9333333333333333,
+        "recall_at_threshold": 0.9767441860465116,
+        "f1_at_threshold": 0.9545454545454546,
+        "roc_auc": 0.9780543727481166,
+        "pr_auc": 0.9658074398346522,
+        "brier_uncalibrated": 0.057801831513643265,
+        "brier_calibrated": 0.050116077065467834,
+        "positive_rate": 0.39473684210526316
+      },
+      "checks": {
+        "d_roc_auc": {
+          "value": 0.02358336062888955,
+          "threshold": 0.003,
+          "passed": true
+        },
+        "d_pr_auc": {
+          "value": 0.040629845503423634,
+          "threshold": 0.008,
+          "passed": true
+        },
+        "d_f1": {
+          "value": 0.06324110671936767,
+          "threshold": 0.008,
+          "passed": true
+        },
+        "precision": {
+          "value": 0.9333333333333333,
+          "threshold": 0.85,
+          "passed": true
+        },
+        "brier_drift": {
+          "value": -12.236944355866932,
+          "threshold": 10.0,
+          "passed": true
+        },
+        "shap_overlap_pct": {
+          "value": 60.0,
+          "threshold": 50.0,
+          "passed": true
+        }
+      },
+      "passed": true
+    }
+  },
+  "overall_passed": false,
+  "selected": [
+    "837I_home_care"
+  ]
+}

@@ -1,0 +1,308 @@
+{
+  "status": "GO",
+  "findings": [],
+  "alembic_head": "0016_mv_pch_deleted",
+  "artifact_root": "artifacts\\featurebuilder",
+  "variants": {
+    "837D/dental": {
+      "variant": "837D",
+      "subtype": "dental",
+      "assertions": {
+        "1_corpus_loaded": {
+          "pass": true,
+          "detail": "rows=1529"
+        },
+        "2_featurebuilder_fit_transform": {
+          "pass": true,
+          "detail": "shape=(1529, 116)"
+        },
+        "3_feature_matrix_shape": {
+          "pass": true,
+          "detail": "rows=1529 cols=116 input_rows=1529"
+        },
+        "4_xgb_fit": {
+          "pass": true,
+          "detail": "trees=200"
+        },
+        "5_cv_oof_predict": {
+          "pass": true,
+          "detail": "shape=(1529,) n_splits=5"
+        },
+        "6_calibrator_fit": {
+          "pass": true,
+          "detail": "monotonic=True"
+        },
+        "7_threshold_selection": {
+          "pass": true,
+          "detail": "threshold=0.060"
+        },
+        "8_artifact_save": {
+          "pass": true,
+          "detail": "dir=artifacts\\featurebuilder\\837D_dental size_bytes=451037"
+        },
+        "9_oof_metric_sanity": {
+          "pass": true,
+          "detail": "roc_auc=0.9727784490333918"
+        },
+        "10_reload_predict_proba": {
+          "pass": true,
+          "detail": "shape=(8, 2) sums_to_one=True range_ok=True"
+        }
+      },
+      "timings": {
+        "load_seconds": 0.26,
+        "fit_transform_seconds": 0.6,
+        "xgb_fit_seconds": 0.11,
+        "cv_oof_seconds": 0.61,
+        "calibrator_seconds": 0.0,
+        "threshold_seconds": 0.0,
+        "save_seconds": 0.02,
+        "reload_predict_seconds": 0.1,
+        "total_seconds": 1.7
+      },
+      "rss": {
+        "start_mb": 176.7,
+        "end_mb": 199.8,
+        "delta_mb": 23.1
+      },
+      "artifact": {
+        "name": "837D_dental",
+        "path": "artifacts\\featurebuilder\\837D_dental",
+        "size_bytes": 451037,
+        "size_kb": 440.5,
+        "size_mb": 0.43,
+        "training_rows": 1529,
+        "feature_count": 116,
+        "denied_rows": 569,
+        "paid_rows": 960,
+        "class_balance_denial_rate": 0.3721,
+        "cv_folds_used": 5,
+        "decision_threshold": 0.06,
+        "feature_engineering_version": "v1.0.0",
+        "model_version": "v1.0.0",
+        "calibrator_version": "isotonic_v1"
+      },
+      "metrics": {
+        "n_training_rows": 1529,
+        "prevalence": 0.3721386527141923,
+        "precision_at_threshold": 0.8898026315789473,
+        "recall_at_threshold": 0.9507908611599297,
+        "f1_at_threshold": 0.91928632115548,
+        "roc_auc": 0.9727784490333918,
+        "pr_auc": 0.9541344379801133,
+        "brier_uncalibrated": 0.04912286251783371,
+        "brier_calibrated": 0.045475538820028305,
+        "low_prob_cutoff": 0.05
+      },
+      "viability_notes": [
+        "calibrator monotonic",
+        "decision threshold within [0.01, 0.99] (=0.060)",
+        "artifact reload + predict_proba sample (n=8) shape=(8, 2) probabilities sum to 1.0",
+        "5-fold CV viable (n_pos=569, n_neg=960)"
+      ],
+      "exception": null,
+      "overall_pass": true,
+      "feature_count": 116
+    },
+    "837P/healthcare": {
+      "variant": "837P",
+      "subtype": "healthcare",
+      "assertions": {
+        "1_corpus_loaded": {
+          "pass": true,
+          "detail": "rows=50318"
+        },
+        "2_featurebuilder_fit_transform": {
+          "pass": true,
+          "detail": "shape=(50318, 114)"
+        },
+        "3_feature_matrix_shape": {
+          "pass": true,
+          "detail": "rows=50318 cols=114 input_rows=50318"
+        },
+        "4_xgb_fit": {
+          "pass": true,
+          "detail": "trees=200"
+        },
+        "5_cv_oof_predict": {
+          "pass": true,
+          "detail": "shape=(50318,) n_splits=5"
+        },
+        "6_calibrator_fit": {
+          "pass": true,
+          "detail": "monotonic=True"
+        },
+        "7_threshold_selection": {
+          "pass": true,
+          "detail": "threshold=0.020"
+        },
+        "8_artifact_save": {
+          "pass": true,
+          "detail": "dir=artifacts\\featurebuilder\\837P_healthcare size_bytes=461262"
+        },
+        "9_oof_metric_sanity": {
+          "pass": true,
+          "detail": "roc_auc=0.9985842484352438"
+        },
+        "10_reload_predict_proba": {
+          "pass": true,
+          "detail": "shape=(8, 2) sums_to_one=True range_ok=True"
+        }
+      },
+      "timings": {
+        "load_seconds": 6.2,
+        "fit_transform_seconds": 5.44,
+        "xgb_fit_seconds": 0.5,
+        "cv_oof_seconds": 2.39,
+        "calibrator_seconds": 0.01,
+        "threshold_seconds": 0.03,
+        "save_seconds": 0.02,
+        "reload_predict_seconds": 0.11,
+        "total_seconds": 14.7
+      },
+      "rss": {
+        "start_mb": 199.8,
+        "end_mb": 709.8,
+        "delta_mb": 509.9
+      },
+      "artifact": {
+        "name": "837P_healthcare",
+        "path": "artifacts\\featurebuilder\\837P_healthcare",
+        "size_bytes": 461262,
+        "size_kb": 450.5,
+        "size_mb": 0.44,
+        "training_rows": 50318,
+        "feature_count": 114,
+        "denied_rows": 10629,
+        "paid_rows": 39689,
+        "class_balance_denial_rate": 0.2112,
+        "cv_folds_used": 5,
+        "decision_threshold": 0.02,
+        "feature_engineering_version": "v1.0.0",
+        "model_version": "v1.0.0",
+        "calibrator_version": "isotonic_v1"
+      },
+      "metrics": {
+        "n_training_rows": 50318,
+        "prevalence": 0.21123653563337175,
+        "precision_at_threshold": 0.8784009347354365,
+        "recall_at_threshold": 0.9902154483018157,
+        "f1_at_threshold": 0.930962805714033,
+        "roc_auc": 0.9985842484352438,
+        "pr_auc": 0.9960823279138521,
+        "brier_uncalibrated": 0.004932278301566839,
+        "brier_calibrated": 0.0044492753222584724,
+        "low_prob_cutoff": 0.05
+      },
+      "viability_notes": [
+        "calibrator monotonic",
+        "decision threshold within [0.01, 0.99] (=0.020)",
+        "artifact reload + predict_proba sample (n=8) shape=(8, 2) probabilities sum to 1.0",
+        "5-fold CV viable (n_pos=10629, n_neg=39689)"
+      ],
+      "exception": null,
+      "overall_pass": true,
+      "feature_count": 114
+    },
+    "837I/home_care": {
+      "variant": "837I",
+      "subtype": "home_care",
+      "assertions": {
+        "1_corpus_loaded": {
+          "pass": true,
+          "detail": "rows=758"
+        },
+        "2_featurebuilder_fit_transform": {
+          "pass": true,
+          "detail": "shape=(758, 119)"
+        },
+        "3_feature_matrix_shape": {
+          "pass": true,
+          "detail": "rows=758 cols=119 input_rows=758"
+        },
+        "4_xgb_fit": {
+          "pass": true,
+          "detail": "trees=200"
+        },
+        "5_cv_oof_predict": {
+          "pass": true,
+          "detail": "shape=(758,) n_splits=5"
+        },
+        "6_calibrator_fit": {
+          "pass": true,
+          "detail": "monotonic=True"
+        },
+        "7_threshold_selection": {
+          "pass": true,
+          "detail": "threshold=0.120"
+        },
+        "8_artifact_save": {
+          "pass": true,
+          "detail": "dir=artifacts\\featurebuilder\\837I_home_care size_bytes=349276"
+        },
+        "9_oof_metric_sanity": {
+          "pass": true,
+          "detail": "roc_auc=0.9706650346797225"
+        },
+        "10_reload_predict_proba": {
+          "pass": true,
+          "detail": "shape=(8, 2) sums_to_one=True range_ok=True"
+        }
+      },
+      "timings": {
+        "load_seconds": 0.12,
+        "fit_transform_seconds": 0.19,
+        "xgb_fit_seconds": 0.09,
+        "cv_oof_seconds": 0.47,
+        "calibrator_seconds": 0.0,
+        "threshold_seconds": 0.0,
+        "save_seconds": 0.02,
+        "reload_predict_seconds": 0.09,
+        "total_seconds": 0.98
+      },
+      "rss": {
+        "start_mb": 287.9,
+        "end_mb": 303.7,
+        "delta_mb": 15.8
+      },
+      "artifact": {
+        "name": "837I_home_care",
+        "path": "artifacts\\featurebuilder\\837I_home_care",
+        "size_bytes": 349276,
+        "size_kb": 341.1,
+        "size_mb": 0.333,
+        "training_rows": 758,
+        "feature_count": 119,
+        "denied_rows": 285,
+        "paid_rows": 473,
+        "class_balance_denial_rate": 0.376,
+        "cv_folds_used": 5,
+        "decision_threshold": 0.12,
+        "feature_engineering_version": "v1.0.0",
+        "model_version": "v1.0.0",
+        "calibrator_version": "isotonic_v1"
+      },
+      "metrics": {
+        "n_training_rows": 758,
+        "prevalence": 0.3759894459102902,
+        "precision_at_threshold": 0.9238754325259516,
+        "recall_at_threshold": 0.9368421052631579,
+        "f1_at_threshold": 0.9303135888501742,
+        "roc_auc": 0.9706650346797225,
+        "pr_auc": 0.9576157155888563,
+        "brier_uncalibrated": 0.04799891635775566,
+        "brier_calibrated": 0.04400381073355675,
+        "low_prob_cutoff": 0.05
+      },
+      "viability_notes": [
+        "calibrator monotonic",
+        "decision threshold within [0.01, 0.99] (=0.120)",
+        "artifact reload + predict_proba sample (n=8) shape=(8, 2) probabilities sum to 1.0",
+        "5-fold CV viable (n_pos=285, n_neg=473)"
+      ],
+      "exception": null,
+      "overall_pass": true,
+      "feature_count": 119
+    }
+  }
+}

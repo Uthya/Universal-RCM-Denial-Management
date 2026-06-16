@@ -23,6 +23,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from rcm.core.config import settings
 from rcm.core.logging import configure_logging, get_logger
 from rcm.routers.dev import router as dev_router
+from rcm.routers.public import router as public_router
 
 logger = get_logger(__name__)
 
@@ -63,6 +64,7 @@ def create_app() -> FastAPI:
     )
 
     app.include_router(dev_router, prefix="/api/dev")
+    app.include_router(public_router, prefix="/api")
     return app
 
 

@@ -67,16 +67,22 @@ def validate_tier2(ctx: ParseContext) -> None:
         if claim.total_charge_amount is None or float(claim.total_charge_amount) <= 0:
             _err(ctx, i, claim.claim_number, "CLM", "total_charge_amount",
                  "CLM02 (total charge) is missing or non-positive")
+        # Billing provider NPI — emitted as WARNING; some clearinghouses send
+        # NM1*85 with the org name but no NPI qualifier, and dropping the claim
+        # for that destroys data the FE / model can still use.
         if not claim.billing_provider_npi:
             _err(ctx, i, claim.claim_number, "NM1", "billing_provider_npi",
-                 "NM1*85 billing provider NPI is missing")
+                 "NM1*85 billing provider NPI is missing", severity="WARNING")
         if not claim.lines:
             _err(ctx, i, claim.claim_number, "SV", "lines",
                  "Claim has no service line (SV1/SV2/SV3) segments")
-        # Principal diagnosis
+        # Principal diagnosis — emitted as WARNING (not ERROR) so claims still
+        # persist with diagnoses=[]. This mirrors v1 behaviour: the field is
+        # *recommended* by the IG but missing it isn't a drop-the-claim event.
+        # The FE layer treats `diagnosis_count=0` as a feature, not a fail.
         if not any(d.diagnosis_type == "ABK" for d in claim.diagnoses):
             _err(ctx, i, claim.claim_number, "HI", "principal_diagnosis",
-                 "No HI*ABK principal diagnosis present")
+                 "No HI*ABK principal diagnosis present", severity="WARNING")
 
         # Variant-specific
         if variant == "837I":

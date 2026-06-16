@@ -1,0 +1,1642 @@
+{
+  "alembic_head": "0017_mv_claim_labels_propagated",
+  "coverage": {
+    "total_claims": 68169,
+    "active_claims": 68169,
+    "total_remits": 68179,
+    "distinct_remit_claims": 56878,
+    "mv_claim_labels": 52613,
+    "conversion_active_pct": 77.18024321905851
+  },
+  "variant_class_balance": {
+    "837D/dental": {
+      "n": 1529,
+      "denied": 569,
+      "paid": 960,
+      "rate": 0.3721386527141923,
+      "cv_viable": true,
+      "all_denied": false,
+      "all_paid": false,
+      "too_sparse": false
+    },
+    "837P/healthcare": {
+      "n": 50318,
+      "denied": 8701,
+      "paid": 41617,
+      "rate": 0.17292022735402837,
+      "cv_viable": true,
+      "all_denied": false,
+      "all_paid": false,
+      "too_sparse": false
+    },
+    "837I/home_care": {
+      "n": 758,
+      "denied": 285,
+      "paid": 473,
+      "rate": 0.3759894459102902,
+      "cv_viable": true,
+      "all_denied": false,
+      "all_paid": false,
+      "too_sparse": false
+    },
+    "837I/institutional_other": {
+      "n": 8,
+      "denied": 2,
+      "paid": 6,
+      "rate": 0.25,
+      "cv_viable": false,
+      "all_denied": false,
+      "all_paid": false,
+      "too_sparse": true
+    }
+  },
+  "fk_integrity": {
+    "837D/dental": {
+      "n": 1529,
+      "orphan_claim": 0,
+      "orphan_lines": 0,
+      "orphan_dx": 1062,
+      "null_patient_fk": 0,
+      "null_payer_fk": 0,
+      "null_bp_fk": 0,
+      "unresolved_patient": 153,
+      "unresolved_payer": 0,
+      "unresolved_bp": 0
+    },
+    "837P/healthcare": {
+      "n": 50318,
+      "orphan_claim": 0,
+      "orphan_lines": 0,
+      "orphan_dx": 529,
+      "null_patient_fk": 0,
+      "null_payer_fk": 100,
+      "null_bp_fk": 0,
+      "unresolved_patient": 595,
+      "unresolved_payer": 0,
+      "unresolved_bp": 0
+    },
+    "837I/home_care": {
+      "n": 758,
+      "orphan_claim": 0,
+      "orphan_lines": 0,
+      "orphan_dx": 26,
+      "null_patient_fk": 0,
+      "null_payer_fk": 0,
+      "null_bp_fk": 0,
+      "unresolved_patient": 71,
+      "unresolved_payer": 0,
+      "unresolved_bp": 0
+    }
+  },
+  "readiness": {
+    "837D/dental": {
+      "overall_pass": true,
+      "columns": {
+        "claim_id": {
+          "present": true,
+          "dtype": "int64",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "claim_number": {
+          "present": true,
+          "dtype": "str",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "service_variant": {
+          "present": true,
+          "dtype": "str",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "claim_subtype": {
+          "present": true,
+          "dtype": "str",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "denied": {
+          "present": true,
+          "dtype": "int8",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "service_from_date": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "total_charge_amount": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 0.0,
+          "tolerance": 0.05,
+          "pass": true
+        },
+        "claim_lines_count": {
+          "present": true,
+          "dtype": "int64",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "diagnoses_count": {
+          "present": true,
+          "dtype": "int64",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "modifiers": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "procedure_codes": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "amounts": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "payer_canonical_name": {
+          "present": true,
+          "dtype": "str",
+          "null_pct": 0.0,
+          "tolerance": 0.5,
+          "pass": true
+        },
+        "primary_cpt": {
+          "present": true,
+          "dtype": "str",
+          "null_pct": 0.02289077828646174,
+          "tolerance": 0.05,
+          "pass": true
+        },
+        "primary_dx": {
+          "present": true,
+          "dtype": "str",
+          "null_pct": 0.6945716154349247,
+          "tolerance": 0.8,
+          "pass": true
+        },
+        "primary_pos": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 1.0,
+          "tolerance": 1.0,
+          "pass": true
+        },
+        "home_care_episode": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 1.0,
+          "tolerance": 1.0,
+          "pass": true
+        },
+        "transport_cert": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 1.0,
+          "tolerance": 1.0,
+          "pass": true
+        }
+      }
+    },
+    "837P/healthcare": {
+      "overall_pass": true,
+      "columns": {
+        "claim_id": {
+          "present": true,
+          "dtype": "int64",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "claim_number": {
+          "present": true,
+          "dtype": "str",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "service_variant": {
+          "present": true,
+          "dtype": "str",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "claim_subtype": {
+          "present": true,
+          "dtype": "str",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "denied": {
+          "present": true,
+          "dtype": "int8",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "service_from_date": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "total_charge_amount": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 0.0,
+          "tolerance": 0.05,
+          "pass": true
+        },
+        "claim_lines_count": {
+          "present": true,
+          "dtype": "int64",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "diagnoses_count": {
+          "present": true,
+          "dtype": "int64",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "modifiers": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "procedure_codes": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "amounts": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "payer_canonical_name": {
+          "present": true,
+          "dtype": "str",
+          "null_pct": 0.0019873603879327476,
+          "tolerance": 0.5,
+          "pass": true
+        },
+        "primary_cpt": {
+          "present": true,
+          "dtype": "str",
+          "null_pct": 0.0026829365237092096,
+          "tolerance": 0.05,
+          "pass": true
+        },
+        "primary_dx": {
+          "present": true,
+          "dtype": "str",
+          "null_pct": 0.010513136452164236,
+          "tolerance": 0.05,
+          "pass": true
+        },
+        "primary_pos": {
+          "present": true,
+          "dtype": "str",
+          "null_pct": 0.0,
+          "tolerance": 0.05,
+          "pass": true
+        },
+        "home_care_episode": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 1.0,
+          "tolerance": 1.0,
+          "pass": true
+        },
+        "transport_cert": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 1.0,
+          "tolerance": 1.0,
+          "pass": true
+        }
+      }
+    },
+    "837I/home_care": {
+      "overall_pass": true,
+      "columns": {
+        "claim_id": {
+          "present": true,
+          "dtype": "int64",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "claim_number": {
+          "present": true,
+          "dtype": "str",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "service_variant": {
+          "present": true,
+          "dtype": "str",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "claim_subtype": {
+          "present": true,
+          "dtype": "str",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "denied": {
+          "present": true,
+          "dtype": "int8",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "service_from_date": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "total_charge_amount": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 0.0,
+          "tolerance": 0.05,
+          "pass": true
+        },
+        "claim_lines_count": {
+          "present": true,
+          "dtype": "int64",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "diagnoses_count": {
+          "present": true,
+          "dtype": "int64",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "modifiers": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "procedure_codes": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "amounts": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 0.0,
+          "tolerance": 0.0,
+          "pass": true
+        },
+        "payer_canonical_name": {
+          "present": true,
+          "dtype": "str",
+          "null_pct": 0.0,
+          "tolerance": 0.5,
+          "pass": true
+        },
+        "primary_cpt": {
+          "present": true,
+          "dtype": "str",
+          "null_pct": 0.0,
+          "tolerance": 0.05,
+          "pass": true
+        },
+        "primary_dx": {
+          "present": true,
+          "dtype": "str",
+          "null_pct": 0.03430079155672823,
+          "tolerance": 0.05,
+          "pass": true
+        },
+        "primary_pos": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 1.0,
+          "tolerance": 1.0,
+          "pass": true
+        },
+        "home_care_episode": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 0.0,
+          "tolerance": 0.05,
+          "pass": true
+        },
+        "transport_cert": {
+          "present": true,
+          "dtype": "object",
+          "null_pct": 1.0,
+          "tolerance": 1.0,
+          "pass": true
+        }
+      }
+    }
+  },
+  "leakage_findings": [],
+  "sparsity": {
+    "837D/dental": {
+      "claim_number": {
+        "non_null_pct": 100.0,
+        "uniques": 1504,
+        "top_pct": 0.13080444735120994,
+        "flags": []
+      },
+      "service_variant": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "claim_subtype": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "payer_id": {
+        "non_null_pct": 100.0,
+        "uniques": 5,
+        "top_pct": 20.66710268149117,
+        "flags": []
+      },
+      "patient_id": {
+        "non_null_pct": 100.0,
+        "uniques": 1203,
+        "top_pct": 0.13080444735120994,
+        "flags": []
+      },
+      "subscriber_id": {
+        "non_null_pct": 87.24656638325703,
+        "uniques": 1334,
+        "top_pct": 0.07496251874062969,
+        "flags": []
+      },
+      "billing_provider_id": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "rendering_provider_id": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "referring_provider_id": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "total_charge_amount": {
+        "non_null_pct": 100.0,
+        "uniques": 1524,
+        "top_pct": 0.13080444735120994,
+        "flags": []
+      },
+      "facility_type_code": {
+        "non_null_pct": 96.66448659254415,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "frequency_code": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "service_from_date": {
+        "non_null_pct": 100.0,
+        "uniques": 44,
+        "top_pct": 3.924133420536298,
+        "flags": []
+      },
+      "service_to_date": {
+        "non_null_pct": 100.0,
+        "uniques": 44,
+        "top_pct": 3.924133420536298,
+        "flags": []
+      },
+      "submission_date": {
+        "non_null_pct": 100.0,
+        "uniques": 2,
+        "top_pct": 95.48724656638326,
+        "flags": []
+      },
+      "authorization_number": {
+        "non_null_pct": 72.59646827992152,
+        "uniques": 781,
+        "top_pct": 0.18018018018018017,
+        "flags": []
+      },
+      "referral_number": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "previous_payer_claim_control_no": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "variant_data": {
+        "non_null_pct": 100.0,
+        "uniques": 1380,
+        "top_pct": 5.428384565075213,
+        "flags": []
+      },
+      "payer_canonical_name": {
+        "non_null_pct": 100.0,
+        "uniques": 5,
+        "top_pct": 20.66710268149117,
+        "flags": []
+      },
+      "payer_taxonomy": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "patient_dob": {
+        "non_null_pct": 89.99345977763244,
+        "uniques": 906,
+        "top_pct": 0.3633720930232558,
+        "flags": []
+      },
+      "patient_gender": {
+        "non_null_pct": 89.99345977763244,
+        "uniques": 2,
+        "top_pct": 51.23546511627907,
+        "flags": []
+      },
+      "billing_provider_taxonomy": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "billing_provider_state": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "billing_provider_npi": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "rendering_provider_npi": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "subscriber_cob": {
+        "non_null_pct": 87.24656638325703,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "subscriber_relationship": {
+        "non_null_pct": 87.24656638325703,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "subscriber_group": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "denied": {
+        "non_null_pct": 100.0,
+        "uniques": 2,
+        "top_pct": 62.78613472858077,
+        "flags": []
+      },
+      "primary_cpt": {
+        "non_null_pct": 97.71092217135383,
+        "uniques": 11,
+        "top_pct": 9.973226238286479,
+        "flags": []
+      },
+      "primary_dx": {
+        "non_null_pct": 30.54283845650752,
+        "uniques": 9,
+        "top_pct": 13.276231263383298,
+        "flags": []
+      },
+      "primary_dx_type": {
+        "non_null_pct": 30.54283845650752,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "primary_pos": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "procedure_codes": {
+        "non_null_pct": 100.0,
+        "uniques": 299,
+        "top_pct": 6.409417920209287,
+        "flags": []
+      },
+      "modifiers": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "revenue_codes": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "hipps_codes": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "tooth_numbers": {
+        "non_null_pct": 100.0,
+        "uniques": 195,
+        "top_pct": 42.77305428384565,
+        "flags": []
+      },
+      "ndc_drug_codes": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "lines_billed_sum": {
+        "non_null_pct": 100.0,
+        "uniques": 1524,
+        "top_pct": 0.13080444735120994,
+        "flags": []
+      },
+      "lines_units_sum": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "claim_lines_count": {
+        "non_null_pct": 100.0,
+        "uniques": 9,
+        "top_pct": 58.20797907128842,
+        "flags": []
+      },
+      "diagnoses_count": {
+        "non_null_pct": 100.0,
+        "uniques": 3,
+        "top_pct": 69.45716154349248,
+        "flags": []
+      },
+      "diagnoses": {
+        "non_null_pct": 100.0,
+        "uniques": 10,
+        "top_pct": 69.45716154349248,
+        "flags": []
+      },
+      "has_paperwork": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "attachment_types": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "has_certification": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "cert_types": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "amounts": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "home_care_episode": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "transport_cert": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      }
+    },
+    "837P/healthcare": {
+      "claim_number": {
+        "non_null_pct": 100.0,
+        "uniques": 50261,
+        "top_pct": 0.005962081163798243,
+        "flags": []
+      },
+      "service_variant": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "claim_subtype": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "payer_id": {
+        "non_null_pct": 99.80126396120673,
+        "uniques": 26,
+        "top_pct": 9.683778724760046,
+        "flags": []
+      },
+      "patient_id": {
+        "non_null_pct": 100.0,
+        "uniques": 49377,
+        "top_pct": 0.01589888310346198,
+        "flags": []
+      },
+      "subscriber_id": {
+        "non_null_pct": 96.36511785047101,
+        "uniques": 48489,
+        "top_pct": 0.002062323413557714,
+        "flags": []
+      },
+      "billing_provider_id": {
+        "non_null_pct": 100.0,
+        "uniques": 2,
+        "top_pct": 99.93242974681029,
+        "flags": []
+      },
+      "rendering_provider_id": {
+        "non_null_pct": 3.078421240907826,
+        "uniques": 12,
+        "top_pct": 18.91542930923176,
+        "flags": [
+          ">95%_null"
+        ]
+      },
+      "referring_provider_id": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "total_charge_amount": {
+        "non_null_pct": 100.0,
+        "uniques": 44075,
+        "top_pct": 0.011924162327596487,
+        "flags": []
+      },
+      "facility_type_code": {
+        "non_null_pct": 98.84136889383521,
+        "uniques": 9,
+        "top_pct": 58.77148889112295,
+        "flags": []
+      },
+      "frequency_code": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "service_from_date": {
+        "non_null_pct": 100.0,
+        "uniques": 172,
+        "top_pct": 2.891609364442148,
+        "flags": []
+      },
+      "service_to_date": {
+        "non_null_pct": 100.0,
+        "uniques": 172,
+        "top_pct": 2.891609364442148,
+        "flags": []
+      },
+      "submission_date": {
+        "non_null_pct": 100.0,
+        "uniques": 2,
+        "top_pct": 99.94037918836202,
+        "flags": []
+      },
+      "authorization_number": {
+        "non_null_pct": 99.81517548392226,
+        "uniques": 50015,
+        "top_pct": 0.003982080637132902,
+        "flags": []
+      },
+      "referral_number": {
+        "non_null_pct": 1.4467983624150405,
+        "uniques": 460,
+        "top_pct": 0.27472527472527475,
+        "flags": [
+          ">95%_null"
+        ]
+      },
+      "previous_payer_claim_control_no": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "variant_data": {
+        "non_null_pct": 100.0,
+        "uniques": 49688,
+        "top_pct": 0.35573750943996185,
+        "flags": []
+      },
+      "payer_canonical_name": {
+        "non_null_pct": 99.80126396120673,
+        "uniques": 26,
+        "top_pct": 9.683778724760046,
+        "flags": []
+      },
+      "payer_taxonomy": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "patient_dob": {
+        "non_null_pct": 98.81752056918002,
+        "uniques": 26208,
+        "top_pct": 0.026144842427045834,
+        "flags": []
+      },
+      "patient_gender": {
+        "non_null_pct": 98.81752056918002,
+        "uniques": 2,
+        "top_pct": 53.546648432315024,
+        "flags": []
+      },
+      "billing_provider_taxonomy": {
+        "non_null_pct": 99.93242974681029,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "billing_provider_state": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "billing_provider_npi": {
+        "non_null_pct": 100.0,
+        "uniques": 2,
+        "top_pct": 99.93242974681029,
+        "flags": []
+      },
+      "rendering_provider_npi": {
+        "non_null_pct": 3.078421240907826,
+        "uniques": 12,
+        "top_pct": 18.91542930923176,
+        "flags": [
+          ">95%_null"
+        ]
+      },
+      "subscriber_cob": {
+        "non_null_pct": 96.36511785047101,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "subscriber_relationship": {
+        "non_null_pct": 96.36511785047101,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "subscriber_group": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "denied": {
+        "non_null_pct": 100.0,
+        "uniques": 2,
+        "top_pct": 78.87634643666283,
+        "flags": []
+      },
+      "primary_cpt": {
+        "non_null_pct": 99.73170634762909,
+        "uniques": 43,
+        "top_pct": 16.957933961700178,
+        "flags": []
+      },
+      "primary_dx": {
+        "non_null_pct": 98.94868635478358,
+        "uniques": 28,
+        "top_pct": 7.017614332483078,
+        "flags": []
+      },
+      "primary_dx_type": {
+        "non_null_pct": 98.94868635478358,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "primary_pos": {
+        "non_null_pct": 100.0,
+        "uniques": 8,
+        "top_pct": 60.1891967089312,
+        "flags": []
+      },
+      "procedure_codes": {
+        "non_null_pct": 100.0,
+        "uniques": 469,
+        "top_pct": 3.702452402718709,
+        "flags": []
+      },
+      "modifiers": {
+        "non_null_pct": 100.0,
+        "uniques": 161,
+        "top_pct": 16.999880758376722,
+        "flags": []
+      },
+      "revenue_codes": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "hipps_codes": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "tooth_numbers": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "ndc_drug_codes": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "lines_billed_sum": {
+        "non_null_pct": 100.0,
+        "uniques": 44640,
+        "top_pct": 0.011924162327596487,
+        "flags": []
+      },
+      "lines_units_sum": {
+        "non_null_pct": 100.0,
+        "uniques": 387,
+        "top_pct": 6.299932429746811,
+        "flags": []
+      },
+      "claim_lines_count": {
+        "non_null_pct": 100.0,
+        "uniques": 22,
+        "top_pct": 22.006041575579317,
+        "flags": []
+      },
+      "diagnoses_count": {
+        "non_null_pct": 100.0,
+        "uniques": 7,
+        "top_pct": 33.3777177153305,
+        "flags": []
+      },
+      "diagnoses": {
+        "non_null_pct": 100.0,
+        "uniques": 16767,
+        "top_pct": 1.1407448626733971,
+        "flags": []
+      },
+      "has_paperwork": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "attachment_types": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "has_certification": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "cert_types": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "amounts": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "home_care_episode": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "transport_cert": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      }
+    },
+    "837I/home_care": {
+      "claim_number": {
+        "non_null_pct": 100.0,
+        "uniques": 749,
+        "top_pct": 0.2638522427440633,
+        "flags": []
+      },
+      "service_variant": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "claim_subtype": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "payer_id": {
+        "non_null_pct": 100.0,
+        "uniques": 5,
+        "top_pct": 21.63588390501319,
+        "flags": []
+      },
+      "patient_id": {
+        "non_null_pct": 100.0,
+        "uniques": 641,
+        "top_pct": 0.39577836411609496,
+        "flags": []
+      },
+      "subscriber_id": {
+        "non_null_pct": 87.20316622691293,
+        "uniques": 661,
+        "top_pct": 0.15128593040847202,
+        "flags": []
+      },
+      "billing_provider_id": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "rendering_provider_id": {
+        "non_null_pct": 96.17414248021109,
+        "uniques": 4,
+        "top_pct": 25.925925925925927,
+        "flags": []
+      },
+      "referring_provider_id": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "total_charge_amount": {
+        "non_null_pct": 100.0,
+        "uniques": 751,
+        "top_pct": 0.2638522427440633,
+        "flags": []
+      },
+      "facility_type_code": {
+        "non_null_pct": 96.96569920844327,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "frequency_code": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "service_from_date": {
+        "non_null_pct": 100.0,
+        "uniques": 58,
+        "top_pct": 5.672823218997362,
+        "flags": []
+      },
+      "service_to_date": {
+        "non_null_pct": 100.0,
+        "uniques": 58,
+        "top_pct": 5.672823218997362,
+        "flags": []
+      },
+      "submission_date": {
+        "non_null_pct": 100.0,
+        "uniques": 2,
+        "top_pct": 92.61213720316623,
+        "flags": []
+      },
+      "authorization_number": {
+        "non_null_pct": 97.0976253298153,
+        "uniques": 709,
+        "top_pct": 0.2717391304347826,
+        "flags": []
+      },
+      "referral_number": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "previous_payer_claim_control_no": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "variant_data": {
+        "non_null_pct": 100.0,
+        "uniques": 733,
+        "top_pct": 0.5277044854881267,
+        "flags": []
+      },
+      "payer_canonical_name": {
+        "non_null_pct": 100.0,
+        "uniques": 5,
+        "top_pct": 21.63588390501319,
+        "flags": []
+      },
+      "payer_taxonomy": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "patient_dob": {
+        "non_null_pct": 90.63324538258576,
+        "uniques": 523,
+        "top_pct": 0.5822416302765647,
+        "flags": []
+      },
+      "patient_gender": {
+        "non_null_pct": 90.63324538258576,
+        "uniques": 2,
+        "top_pct": 53.56622998544396,
+        "flags": []
+      },
+      "billing_provider_taxonomy": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "billing_provider_state": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "billing_provider_npi": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "rendering_provider_npi": {
+        "non_null_pct": 96.17414248021109,
+        "uniques": 4,
+        "top_pct": 25.925925925925927,
+        "flags": []
+      },
+      "subscriber_cob": {
+        "non_null_pct": 87.20316622691293,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "subscriber_relationship": {
+        "non_null_pct": 87.20316622691293,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "subscriber_group": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "denied": {
+        "non_null_pct": 100.0,
+        "uniques": 2,
+        "top_pct": 62.401055408970976,
+        "flags": []
+      },
+      "primary_cpt": {
+        "non_null_pct": 100.0,
+        "uniques": 7,
+        "top_pct": 15.567282321899736,
+        "flags": []
+      },
+      "primary_dx": {
+        "non_null_pct": 96.56992084432717,
+        "uniques": 9,
+        "top_pct": 13.934426229508198,
+        "flags": []
+      },
+      "primary_dx_type": {
+        "non_null_pct": 96.56992084432717,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "primary_pos": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      },
+      "procedure_codes": {
+        "non_null_pct": 100.0,
+        "uniques": 708,
+        "top_pct": 0.5277044854881267,
+        "flags": []
+      },
+      "modifiers": {
+        "non_null_pct": 100.0,
+        "uniques": 276,
+        "top_pct": 2.9023746701846966,
+        "flags": []
+      },
+      "revenue_codes": {
+        "non_null_pct": 100.0,
+        "uniques": 589,
+        "top_pct": 0.6596306068601583,
+        "flags": []
+      },
+      "hipps_codes": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "tooth_numbers": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "ndc_drug_codes": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "lines_billed_sum": {
+        "non_null_pct": 100.0,
+        "uniques": 751,
+        "top_pct": 0.2638522427440633,
+        "flags": []
+      },
+      "lines_units_sum": {
+        "non_null_pct": 100.0,
+        "uniques": 36,
+        "top_pct": 23.350923482849606,
+        "flags": []
+      },
+      "claim_lines_count": {
+        "non_null_pct": 100.0,
+        "uniques": 10,
+        "top_pct": 24.53825857519789,
+        "flags": []
+      },
+      "diagnoses_count": {
+        "non_null_pct": 100.0,
+        "uniques": 6,
+        "top_pct": 31.926121372031663,
+        "flags": []
+      },
+      "diagnoses": {
+        "non_null_pct": 100.0,
+        "uniques": 444,
+        "top_pct": 3.430079155672823,
+        "flags": []
+      },
+      "has_paperwork": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "attachment_types": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "has_certification": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "cert_types": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "amounts": {
+        "non_null_pct": 100.0,
+        "uniques": 1,
+        "top_pct": 100.0,
+        "flags": [
+          "constant"
+        ]
+      },
+      "home_care_episode": {
+        "non_null_pct": 100.0,
+        "uniques": 758,
+        "top_pct": 0.13192612137203166,
+        "flags": []
+      },
+      "transport_cert": {
+        "non_null_pct": 0.0,
+        "uniques": 0,
+        "top_pct": 0.0,
+        "flags": [
+          ">95%_null",
+          "all_null"
+        ]
+      }
+    }
+  },
+  "status": "NO-GO",
+  "findings": [
+    "mv_claim_labels count is 52613, expected 6,332"
+  ]
+}

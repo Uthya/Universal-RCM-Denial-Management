@@ -21,6 +21,48 @@ from a git log is **"System behavior after this change"**. Future readers
 should be able to understand what the system does differently because of
 each entry without grepping code.
 
+## Mandatory: Architecture Impact Review (AIR) before any non-trivial change
+
+Lesson from CR-050 → CR-052: a single "functionally correct" UPDATE inflated
+`audit_log` to 7 M rows / 8 GB before it was caught. Going forward, every
+implementation proposal — feature, fix, optimization, migration, model
+component, RAG component, scheduler, API, or DB change — **must be preceded
+by an Architecture Impact Review document**. Wait for explicit approval
+before writing code. "It works functionally" is not sufficient justification.
+
+The AIR must contain all eight sections, in this order:
+
+1. **Functional impact** — what changes from the user's perspective
+2. **Database impact** — schema deltas, new tables / columns / indexes,
+   migration shape
+3. **Query count impact** — queries per upload / request / job, before vs after
+4. **Storage impact** — bytes per row, expected row count, totals
+5. **Scalability** at three scales — 20 k rows (current), 500 k rows, 1 M+ rows
+6. **Cross-cutting impact** — call out effect on FeatureBuilder, Training,
+   Prediction, RAG, Monitoring, and future phases (4, 5, 6+)
+7. **Rollback strategy** — exact revert steps
+8. **Operational cost** — dev time, compute, ongoing maintenance
+
+Plus a **red-flag checklist** (state yes/no with location for each):
+- Full-table scans?
+- Repeated queries (per-upload, per-request)?
+- N+1 patterns?
+- Repeated UPDATEs?
+- Unnecessary writes (UPDATEs that don't change values)?
+- Refresh-heavy operations (MV refreshes, full recomputes)?
+- Partitioning implications (will it cross-partition or require new ones)?
+
+**Approval criterion**: the preferred solution is the one that preserves
+architectural integrity, minimises DB load, scales correctly to 1 M+ rows,
+and remains compatible with future phases — *not* the one that works.
+
+**Shortcut policy**: if a temporary workaround is proposed, label it
+explicitly, estimate the tech debt it introduces, and record the condition
+under which it must be removed.
+
+Routine work (typo fix, comment, single-line bugfix that touches no DB /
+schema / ML / persistent state) is pre-authorized and does not need an AIR.
+
 ## Project-specific conventions
 
 ### Lessons baked into this code (do not regress)

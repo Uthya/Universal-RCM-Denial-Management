@@ -1,0 +1,700 @@
+{
+  "alembic_head": "0016_mv_pch_deleted",
+  "cohort": "mv_claim_labels (post-CR-056)",
+  "promotion_gates": {
+    "min_auc_delta": 0.015,
+    "min_pr_auc_delta": 0.015,
+    "min_f1_delta": 0.015,
+    "mcnemar_p_max": 0.05,
+    "worst_variant_regression": -0.005,
+    "leakage_corrected_must_pass": true
+  },
+  "primary": {
+    "837D/dental": {
+      "featurebuilder": {
+        "n": 1529,
+        "prevalence": 0.3721386527141923,
+        "roc_auc": 0.9738924282366725,
+        "pr_auc": 0.9565444932329317,
+        "brier": 0.046264730573614715,
+        "ece": 6.736422803050642e-05,
+        "threshold": 0.06999999999999999,
+        "precision": 0.8968386023294509,
+        "recall": 0.9472759226713533,
+        "f1": 0.9213675213675213,
+        "confusion_matrix": [
+          [
+            898,
+            62
+          ],
+          [
+            30,
+            539
+          ]
+        ],
+        "roc_auc_ci_95": [
+          0.965337493622779,
+          0.9821301732260637
+        ]
+      },
+      "simple_pipeline": {
+        "n": 1529,
+        "prevalence": 0.3721386527141923,
+        "roc_auc": 0.735065172817809,
+        "pr_auc": 0.697389369945559,
+        "brier": 0.16691274602100542,
+        "ece": 0.00014127186177319867,
+        "threshold": 0.34,
+        "precision": 0.8764044943820225,
+        "recall": 0.4112478031634446,
+        "f1": 0.5598086124401914,
+        "confusion_matrix": [
+          [
+            927,
+            33
+          ],
+          [
+            335,
+            234
+          ]
+        ],
+        "roc_auc_ci_95": [
+          0.7092878180853593,
+          0.7653613796133567
+        ]
+      }
+    },
+    "837P/healthcare": {
+      "featurebuilder": {
+        "n": 50318,
+        "prevalence": 0.21123653563337175,
+        "roc_auc": 0.9985009874770034,
+        "pr_auc": 0.9958808590612825,
+        "brier": 0.0044827354608550606,
+        "ece": 0.0006603810153288324,
+        "threshold": 0.02,
+        "precision": 0.9255768892020433,
+        "recall": 0.9887101326559413,
+        "f1": 0.9561024427967065,
+        "confusion_matrix": [
+          [
+            38844,
+            845
+          ],
+          [
+            120,
+            10509
+          ]
+        ],
+        "roc_auc_ci_95": [
+          0.9981748890949025,
+          0.9987960856876896
+        ]
+      },
+      "simple_pipeline": {
+        "n": 50318,
+        "prevalence": 0.21123653563337175,
+        "roc_auc": 0.7687545741050393,
+        "pr_auc": 0.6573091511807648,
+        "brier": 0.10482712771529717,
+        "ece": 8.466399636175868e-05,
+        "threshold": 0.35000000000000003,
+        "precision": 0.8501107136773973,
+        "recall": 0.46956439928497506,
+        "f1": 0.6049696969696969,
+        "confusion_matrix": [
+          [
+            38809,
+            880
+          ],
+          [
+            5638,
+            4991
+          ]
+        ],
+        "roc_auc_ci_95": [
+          0.7635525224687594,
+          0.7742622709780616
+        ]
+      }
+    },
+    "837I/home_care": {
+      "featurebuilder": {
+        "n": 758,
+        "prevalence": 0.3759894459102902,
+        "roc_auc": 0.966533140462149,
+        "pr_auc": 0.9522008512977846,
+        "brier": 0.04447231158363167,
+        "ece": 0.00021768214075402174,
+        "threshold": 0.060000000000000005,
+        "precision": 0.8786885245901639,
+        "recall": 0.9403508771929825,
+        "f1": 0.9084745762711864,
+        "confusion_matrix": [
+          [
+            436,
+            37
+          ],
+          [
+            17,
+            268
+          ]
+        ],
+        "roc_auc_ci_95": [
+          0.9513980434330118,
+          0.9805321796847221
+        ]
+      },
+      "simple_pipeline": {
+        "n": 758,
+        "prevalence": 0.3759894459102902,
+        "roc_auc": 0.8135974184933793,
+        "pr_auc": 0.7888940134434816,
+        "brier": 0.1265061281970355,
+        "ece": 0.000233508132909256,
+        "threshold": 0.28,
+        "precision": 0.9821428571428571,
+        "recall": 0.5789473684210527,
+        "f1": 0.7284768211920529,
+        "confusion_matrix": [
+          [
+            470,
+            3
+          ],
+          [
+            120,
+            165
+          ]
+        ],
+        "roc_auc_ci_95": [
+          0.7799794999450892,
+          0.8415609456824208
+        ]
+      }
+    },
+    "overall": {
+      "featurebuilder": {
+        "n": 52605,
+        "prevalence": 0.21828723505370212,
+        "roc_auc": 0.9981595377502219,
+        "pr_auc": 0.995205575151797,
+        "brier": 0.00627337835085552,
+        "ece": 0.0006367655844589597,
+        "threshold": 0.060000000000000005,
+        "precision": 0.9565695902472062,
+        "recall": 0.9839763128102412,
+        "f1": 0.9700794161837304,
+        "confusion_matrix": [
+          [
+            40609,
+            513
+          ],
+          [
+            184,
+            11299
+          ]
+        ],
+        "roc_auc_ci_95": [
+          0.9978081220763962,
+          0.9984905027108105
+        ]
+      },
+      "simple_pipeline": {
+        "n": 52605,
+        "prevalence": 0.21828723505370212,
+        "roc_auc": 0.7754439572363911,
+        "pr_auc": 0.6710940175683181,
+        "brier": 0.10694406703198925,
+        "ece": 8.84540231860064e-05,
+        "threshold": 0.34,
+        "precision": 0.8488791346606052,
+        "recall": 0.4715666637638248,
+        "f1": 0.606315082297615,
+        "confusion_matrix": [
+          [
+            40158,
+            964
+          ],
+          [
+            6068,
+            5415
+          ]
+        ],
+        "roc_auc_ci_95": [
+          0.7705374101531731,
+          0.7806366978906403
+        ]
+      }
+    }
+  },
+  "corrected": {
+    "837D/dental": {
+      "featurebuilder_corrected": {
+        "n": 1529,
+        "prevalence": 0.3721386527141923,
+        "roc_auc": 0.965223161980082,
+        "pr_auc": 0.9440185147150336,
+        "brier": 0.05346615798281176,
+        "ece": 5.494283364222333e-05,
+        "threshold": 0.08,
+        "precision": 0.864516129032258,
+        "recall": 0.9420035149384886,
+        "f1": 0.9015979814970564,
+        "confusion_matrix": [
+          [
+            876,
+            84
+          ],
+          [
+            33,
+            536
+          ]
+        ],
+        "roc_auc_ci_95": [
+          0.9551535426980198,
+          0.9755758567402965
+        ]
+      }
+    },
+    "837P/healthcare": {
+      "featurebuilder_corrected": {
+        "n": 50318,
+        "prevalence": 0.21123653563337175,
+        "roc_auc": 0.9983451446009755,
+        "pr_auc": 0.9953649736177078,
+        "brier": 0.004676258980510851,
+        "ece": 0.0006725174120119611,
+        "threshold": 0.02,
+        "precision": 0.89005501481168,
+        "recall": 0.9893687082510114,
+        "f1": 0.9370878631260025,
+        "confusion_matrix": [
+          [
+            38390,
+            1299
+          ],
+          [
+            113,
+            10516
+          ]
+        ],
+        "roc_auc_ci_95": [
+          0.9979953452910708,
+          0.9986981024145807
+        ]
+      }
+    },
+    "837I/home_care": {
+      "featurebuilder_corrected": {
+        "n": 758,
+        "prevalence": 0.3759894459102902,
+        "roc_auc": 0.9629538963688289,
+        "pr_auc": 0.945781002590977,
+        "brier": 0.04375696425354427,
+        "ece": 9.630100895580131e-05,
+        "threshold": 0.05,
+        "precision": 0.9399293286219081,
+        "recall": 0.9333333333333333,
+        "f1": 0.9366197183098591,
+        "confusion_matrix": [
+          [
+            456,
+            17
+          ],
+          [
+            19,
+            266
+          ]
+        ],
+        "roc_auc_ci_95": [
+          0.9492632864812693,
+          0.9785938433950988
+        ]
+      }
+    },
+    "overall": {
+      "featurebuilder_corrected": {
+        "n": 52605,
+        "prevalence": 0.21828723505370212,
+        "roc_auc": 0.9979276305296962,
+        "pr_auc": 0.9945680079751681,
+        "brier": 0.006657495178048679,
+        "ece": 0.000646264297031172,
+        "threshold": 0.05,
+        "precision": 0.9623880597014925,
+        "recall": 0.98267003396325,
+        "f1": 0.9724233023095484,
+        "confusion_matrix": [
+          [
+            40681,
+            441
+          ],
+          [
+            199,
+            11284
+          ]
+        ],
+        "roc_auc_ci_95": [
+          0.9975505352412108,
+          0.9982974637039781
+        ]
+      }
+    }
+  },
+  "paired": {
+    "overall": {
+      "n": 52605,
+      "agreement_rate": 0.8614010075087919,
+      "agreement_count": 45314,
+      "disagreement_count": 7291,
+      "mcnemar_simple_correct_fb_wrong": 478,
+      "mcnemar_fb_correct_simple_wrong": 6813,
+      "mcnemar_p_value": 0.0,
+      "favors_fb_directionally": true,
+      "score_delta_max": 0.990404024720192,
+      "score_delta_mean": 0.20663946209507797,
+      "score_delta_p50": 0.12004187901038677,
+      "score_delta_p95": 0.8688489496707916,
+      "score_delta_p99": 0.8996949642896652
+    }
+  },
+  "disagreement": {
+    "overall": {
+      "total_disagreements": 7291,
+      "fb_correct_simple_wrong": 6813,
+      "simple_correct_fb_wrong": 478,
+      "both_wrong_on_disagreement": 0,
+      "null_payer": {
+        "n_in_cohort": 100,
+        "n_disagreements": 0,
+        "fb_correct_on_null_payer": 0,
+        "simple_correct_on_null_payer": 0
+      },
+      "rare_cpt": {
+        "n_in_cohort": 34,
+        "n_disagreements": 1,
+        "fb_correct": 0,
+        "simple_correct": 1
+      },
+      "rare_dx": {
+        "n_in_cohort": 33,
+        "n_disagreements": 1,
+        "fb_correct": 0,
+        "simple_correct": 1
+      },
+      "top_25_disagreements_by_delta": [
+        {
+          "claim_id": 68008,
+          "y_true": 1,
+          "simple_score": 0.9990000128746033,
+          "fb_score": 0.008595988154411316,
+          "delta": 0.990404024720192,
+          "simple_label": 1,
+          "fb_label": 0,
+          "fb_correct": false,
+          "simple_correct": true
+        },
+        {
+          "claim_id": 68184,
+          "y_true": 1,
+          "simple_score": 0.9990000128746033,
+          "fb_score": 0.01859099790453911,
+          "delta": 0.9804090149700642,
+          "simple_label": 1,
+          "fb_label": 0,
+          "fb_correct": false,
+          "simple_correct": true
+        },
+        {
+          "claim_id": 68171,
+          "y_true": 1,
+          "simple_score": 0.9990000128746033,
+          "fb_score": 0.01859099790453911,
+          "delta": 0.9804090149700642,
+          "simple_label": 1,
+          "fb_label": 0,
+          "fb_correct": false,
+          "simple_correct": true
+        },
+        {
+          "claim_id": 17205,
+          "y_true": 1,
+          "simple_score": 0.02857142686843872,
+          "fb_score": 0.9990000128746033,
+          "delta": 0.9704285860061646,
+          "simple_label": 0,
+          "fb_label": 1,
+          "fb_correct": true,
+          "simple_correct": false
+        },
+        {
+          "claim_id": 67992,
+          "y_true": 1,
+          "simple_score": 0.9990000128746033,
+          "fb_score": 0.03448275849223137,
+          "delta": 0.9645172543823719,
+          "simple_label": 1,
+          "fb_label": 0,
+          "fb_correct": false,
+          "simple_correct": true
+        },
+        {
+          "claim_id": 45745,
+          "y_true": 1,
+          "simple_score": 0.03703703731298447,
+          "fb_score": 0.9990000128746033,
+          "delta": 0.9619629755616188,
+          "simple_label": 0,
+          "fb_label": 1,
+          "fb_correct": true,
+          "simple_correct": false
+        },
+        {
+          "claim_id": 68046,
+          "y_true": 1,
+          "simple_score": 0.9990000128746033,
+          "fb_score": 0.04591836780309677,
+          "delta": 0.9530816450715065,
+          "simple_label": 1,
+          "fb_label": 0,
+          "fb_correct": false,
+          "simple_correct": true
+        },
+        {
+          "claim_id": 68068,
+          "y_true": 1,
+          "simple_score": 0.9990000128746033,
+          "fb_score": 0.0476190485060215,
+          "delta": 0.9513809643685818,
+          "simple_label": 1,
+          "fb_label": 0,
+          "fb_correct": false,
+          "simple_correct": true
+        },
+        {
+          "claim_id": 68126,
+          "y_true": 1,
+          "simple_score": 0.9990000128746033,
+          "fb_score": 0.0476190485060215,
+          "delta": 0.9513809643685818,
+          "simple_label": 1,
+          "fb_label": 0,
+          "fb_correct": false,
+          "simple_correct": true
+        },
+        {
+          "claim_id": 68165,
+          "y_true": 1,
+          "simple_score": 0.9990000128746033,
+          "fb_score": 0.050632912665605545,
+          "delta": 0.9483671002089977,
+          "simple_label": 1,
+          "fb_label": 0,
+          "fb_correct": false,
+          "simple_correct": true
+        },
+        {
+          "claim_id": 68186,
+          "y_true": 1,
+          "simple_score": 0.9990000128746033,
+          "fb_score": 0.050632912665605545,
+          "delta": 0.9483671002089977,
+          "simple_label": 1,
+          "fb_label": 0,
+          "fb_correct": false,
+          "simple_correct": true
+        },
+        {
+          "claim_id": 32026,
+          "y_true": 1,
+          "simple_score": 0.0625,
+          "fb_score": 0.9990000128746033,
+          "delta": 0.9365000128746033,
+          "simple_label": 0,
+          "fb_label": 1,
+          "fb_correct": true,
+          "simple_correct": false
+        },
+        {
+          "claim_id": 51669,
+          "y_true": 1,
+          "simple_score": 0.06796116381883621,
+          "fb_score": 0.9990000128746033,
+          "delta": 0.9310388490557671,
+          "simple_label": 0,
+          "fb_label": 1,
+          "fb_correct": true,
+          "simple_correct": false
+        },
+        {
+          "claim_id": 25856,
+          "y_true": 1,
+          "simple_score": 0.06796116381883621,
+          "fb_score": 0.9990000128746033,
+          "delta": 0.9310388490557671,
+          "simple_label": 0,
+          "fb_label": 1,
+          "fb_correct": true,
+          "simple_correct": false
+        },
+        {
+          "claim_id": 8283,
+          "y_true": 1,
+          "simple_score": 0.06796116381883621,
+          "fb_score": 0.9990000128746033,
+          "delta": 0.9310388490557671,
+          "simple_label": 0,
+          "fb_label": 1,
+          "fb_correct": true,
+          "simple_correct": false
+        },
+        {
+          "claim_id": 39721,
+          "y_true": 1,
+          "simple_score": 0.06796116381883621,
+          "fb_score": 0.9990000128746033,
+          "delta": 0.9310388490557671,
+          "simple_label": 0,
+          "fb_label": 1,
+          "fb_correct": true,
+          "simple_correct": false
+        },
+        {
+          "claim_id": 4307,
+          "y_true": 1,
+          "simple_score": 0.06796116381883621,
+          "fb_score": 0.9990000128746033,
+          "delta": 0.9310388490557671,
+          "simple_label": 0,
+          "fb_label": 1,
+          "fb_correct": true,
+          "simple_correct": false
+        },
+        {
+          "claim_id": 47984,
+          "y_true": 1,
+          "simple_score": 0.06796116381883621,
+          "fb_score": 0.9990000128746033,
+          "delta": 0.9310388490557671,
+          "simple_label": 0,
+          "fb_label": 1,
+          "fb_correct": true,
+          "simple_correct": false
+        },
+        {
+          "claim_id": 20664,
+          "y_true": 1,
+          "simple_score": 0.06796116381883621,
+          "fb_score": 0.9975903630256653,
+          "delta": 0.9296291992068291,
+          "simple_label": 0,
+          "fb_label": 1,
+          "fb_correct": true,
+          "simple_correct": false
+        },
+        {
+          "claim_id": 4559,
+          "y_true": 1,
+          "simple_score": 0.0625,
+          "fb_score": 0.9916434288024902,
+          "delta": 0.9291434288024902,
+          "simple_label": 0,
+          "fb_label": 1,
+          "fb_correct": true,
+          "simple_correct": false
+        },
+        {
+          "claim_id": 68034,
+          "y_true": 1,
+          "simple_score": 0.9990000128746033,
+          "fb_score": 0.06989247351884842,
+          "delta": 0.9291075393557549,
+          "simple_label": 1,
+          "fb_label": 1,
+          "fb_correct": true,
+          "simple_correct": true
+        },
+        {
+          "claim_id": 2601,
+          "y_true": 1,
+          "simple_score": 0.06060606241226196,
+          "fb_score": 0.9841269850730896,
+          "delta": 0.9235209226608276,
+          "simple_label": 0,
+          "fb_label": 1,
+          "fb_correct": true,
+          "simple_correct": false
+        },
+        {
+          "claim_id": 53739,
+          "y_true": 1,
+          "simple_score": 0.08097686618566513,
+          "fb_score": 0.9990000128746033,
+          "delta": 0.9180231466889381,
+          "simple_label": 0,
+          "fb_label": 1,
+          "fb_correct": true,
+          "simple_correct": false
+        },
+        {
+          "claim_id": 20793,
+          "y_true": 1,
+          "simple_score": 0.08097686618566513,
+          "fb_score": 0.9990000128746033,
+          "delta": 0.9180231466889381,
+          "simple_label": 0,
+          "fb_label": 1,
+          "fb_correct": true,
+          "simple_correct": false
+        },
+        {
+          "claim_id": 45120,
+          "y_true": 1,
+          "simple_score": 0.08097686618566513,
+          "fb_score": 0.9990000128746033,
+          "delta": 0.9180231466889381,
+          "simple_label": 0,
+          "fb_label": 1,
+          "fb_correct": true,
+          "simple_correct": false
+        }
+      ]
+    }
+  },
+  "complexity": {
+    "feature_count_primary_fb": {
+      "837D/dental": 116,
+      "837P/healthcare": 114,
+      "837I/home_care": 119
+    },
+    "feature_count_simple_pipeline": "computed at fit_transform; ~50-80 per claim",
+    "signal_density_fb": 0.458,
+    "active_features_fb": 160,
+    "constant_features_fb": 189,
+    "training_time_seconds_fb_per_variant_5fold": "see r6_benchmark_post.json timings",
+    "artifact_size_mb_fb_total": 1.1,
+    "prediction_latency_ms_per_claim_fb_shadow": "20-50ms (CR-065)"
+  },
+  "decision": {
+    "recommendation": "A",
+    "rationale": [
+      "Primary AUC delta (FB - simple) = +0.2227",
+      "Primary PR-AUC delta = +0.3241",
+      "Primary F1 delta = +0.3638",
+      "Brier delta (lower is better; FB - simple) = -0.1007",
+      "McNemar p = 0.0000 (favors FB directionally: True)",
+      "Worst variant AUC delta = +0.1529 on 837I/home_care (min allowed for promotion: -0.0050)",
+      "Leakage-corrected AUC delta (corrected FB - simple) = +0.2225",
+      "Leakage-corrected PR-AUC delta = +0.3235",
+      "Leakage-corrected F1 delta = +0.3661",
+      "Corrected promotion gate satisfied: True",
+      "Material collapse from primary to corrected: False",
+      "DECISION A: FB satisfies all primary + corrected gates"
+    ],
+    "primary_promote": true,
+    "corrected_promote": true,
+    "no_variant_regression": true,
+    "auc_delta_primary": 0.22271558051383078,
+    "auc_delta_corrected": 0.2224836732933051
+  }
+}

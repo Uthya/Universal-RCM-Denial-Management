@@ -174,7 +174,16 @@ class TestPhase3E2E:
             assert (art_dir / "rarity_state.joblib").exists()
             assert (art_dir / "feature_schema.json").exists()
             assert bundle.decision_threshold > 0
-            assert bundle.metrics["n_training_rows"] == len(X)
+            # CR-075: corpus is split 70/15/15 → train + validation + held_out ≈ len(X)
+            n_train = int(bundle.metrics["n_training_rows"])
+            n_val   = int(bundle.metrics.get("n_validation_rows", 0))
+            n_held  = int(bundle.metrics.get("n_held_out_rows", 0))
+            assert n_train + n_val + n_held == len(X), (
+                f"split arithmetic: {n_train}+{n_val}+{n_held} != {len(X)}"
+            )
+            assert n_train > 0 and n_val > 0 and n_held > 0
+            assert bundle.metrics.get("held_out") is not None
+            assert bundle.metrics.get("validation") is not None
 
             # ---- 4. Reload + predict ----
             predictor = HealthcarePredictor.load(art_dir)

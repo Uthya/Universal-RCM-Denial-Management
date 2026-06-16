@@ -1,0 +1,90 @@
+{
+  "summary": [
+    {
+      "label": "837_original",
+      "total": 1015,
+      "success": 978,
+      "duplicate": 15,
+      "error": 22,
+      "other": 0,
+      "elapsed_seconds": 125.5,
+      "rate_per_second": 8.08,
+      "failure_samples": [
+        [
+          "LR1K_D_pair_05_original_837.dat",
+          "HTTP 500: Internal Server Error"
+        ],
+        [
+          "LR1K_D_pair_06_original_837.dat",
+          "HTTP 500: Internal Server Error"
+        ],
+        [
+          "LR1K_D_pair_02_original_837.dat",
+          "HTTP 500: Internal Server Error"
+        ],
+        [
+          "LR1K_D_pair_08_original_837.dat",
+          "HTTP 500: Internal Server Error"
+        ],
+        [
+          "LR1K_D_pair_13_original_837.dat",
+          "HTTP 500: Internal Server Error"
+        ],
+        [
+          "LR1K_D_pair_11_original_837.dat",
+          "HTTP 500: Internal Server Error"
+        ],
+        [
+          "LR1K_D_pair_12_original_837.dat",
+          "HTTP 500: Internal Server Error"
+        ],
+        [
+          "LR1K_I_pair_06_original_837.dat",
+          "HTTP 500: Internal Server Error"
+        ],
+        [
+          "LR1K_I_pair_02_original_837.dat",
+          "HTTP 500: Internal Server Error"
+        ],
+        [
+          "LR1K_I_pair_04_original_837.dat",
+          "HTTP 500: Internal Server Error"
+        ]
+      ]
+    },
+    {
+      "label": "837_replacement",
+      "total": 1015,
+      "success": 1000,
+      "duplicate": 15,
+      "error": 0,
+      "other": 0,
+      "elapsed_seconds": 82.8,
+      "rate_per_second": 12.27,
+      "failure_samples": []
+    },
+    {
+      "label": "835_original",
+      "total": 1015,
+      "success": 1000,
+      "duplicate": 15,
+      "error": 0,
+      "other": 0,
+      "elapsed_seconds": 103.1,
+      "rate_per_second": 9.85,
+      "failure_samples": []
+    },
+    {
+      "label": "835_replacement",
+      "total": 1015,
+      "success": 1000,
+      "duplicate": 15,
+      "error": 0,
+      "other": 0,
+      "elapsed_seconds": 72.9,
+      "rate_per_second": 13.93,
+      "failure_samples": []
+    }
+  ],
+  "grand_total_seconds": 384.24155870001414
+}

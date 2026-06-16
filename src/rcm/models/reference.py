@@ -30,7 +30,11 @@ from rcm.models._mixins import TimestampMixin
 
 
 class CodeMaster(Base, TimestampMixin):
-    """CARC, RARC, POS, claim_status, etc. — loaded from WPC quarterly."""
+    """CARC / RARC / POS / claim_status, etc. — loaded from WPC quarterly.
+
+    Enriched with denial-reasoning fields used by the predictions router:
+    `denial_reason_plain` is what the UI surfaces as the reason for an 835
+    denial; `severity` and `action_category` drive future colour-coding."""
 
     __tablename__ = "code_masters"
 
@@ -39,6 +43,21 @@ class CodeMaster(Base, TimestampMixin):
     code: Mapped[str] = mapped_column(String(20), nullable=False)
     description: Mapped[str | None] = mapped_column(String(2000), nullable=True)
     deactivated_at: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+    # Enriched fields (migration 0011)
+    short_description: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    denial_reason_plain: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    patient_friendly_reason: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    recommended_action: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    category: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    action_category: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    severity: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    is_billable_denial: Mapped[bool | None] = mapped_column(nullable=True)
+    is_patient_responsibility: Mapped[bool | None] = mapped_column(nullable=True)
+    requires_remark_code: Mapped[bool | None] = mapped_column(nullable=True)
+    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    last_modified_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    stop_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     __table_args__ = (UniqueConstraint("code_type", "code", name="uq_code_masters_type_code"),)
 

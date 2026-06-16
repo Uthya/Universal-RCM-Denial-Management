@@ -15,8 +15,9 @@ Organized by responsibility, not by one-file-per-segment:
     reference      — REF
     certification  — CR1, CR3, CRC
     dental         — TOO, DN1, DN2
+    institutional  — CL1 (837I admission type / source / patient status)
     attachment     — PWK
-    amount         — AMT
+    amount         — AMT (837 + 835)
     note           — NTE
     remittance     — CLP, CAS, LQ, MIA, MOA, SVC
 """
@@ -31,6 +32,7 @@ from rcm.parsing.handlers import (
     dental,
     diagnosis,
     hierarchy,
+    institutional,
     note,
     reference,
     remittance,
@@ -47,6 +49,7 @@ __all__ = [
     "dental",
     "diagnosis",
     "hierarchy",
+    "institutional",
     "note",
     "reference",
     "remittance",

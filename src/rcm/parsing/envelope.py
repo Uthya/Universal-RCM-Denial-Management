@@ -34,16 +34,27 @@ class Delimiters:
     segment: str = "~"
 
 
-_ISA_LEN = 106
+_ISA_LEN = 106                # X12 spec: ISA + 106 bytes including terminator
+_ISA_MIN_SCAN_LEN = 80        # Lower bound — even maximally-short ISA fields can't pack 16
+                              # element separators + ISA16 + terminator into less than this.
+_ISA_ELEMENT_COUNT = 16       # ISA has 16 fields (ISA01..ISA16) -> 16 element separators
 
 
 def detect_delimiters(raw_text: str) -> Delimiters:
     """Parse the three delimiters out of the ISA header.
 
-    Per ASC X12, ISA is a fixed-width 106-character segment. Bytes 3, 104,
-    and 105 are the element separator, component separator, and segment
-    terminator respectively. ISA[6] must equal ISA[3] (it's also an element
-    separator) — if they differ the file is word-wrapped or corrupted.
+    Per ASC X12 the ISA segment is fixed-width 106 chars and the delimiters
+    live at hard-coded offsets (3, 104, 105). Some real-world generators
+    short-pad ISA13 (Interchange Control Number) — the spec says 9 chars
+    zero-padded, but a 4-char value is common in the wild. That shortens
+    the ISA by 5 bytes and breaks fixed-offset reads (CR-059 / UQ10K
+    dataset hit this).
+
+    We tolerate variable-length ISA fields by scanning for the 16 element
+    separators that ISA01..ISA16 imply. The byte after the 16th separator
+    is ISA16 (component separator); the byte after that is the segment
+    terminator. Genuine corruption (no ISA prefix, fewer than 16 element
+    separators, alphanumeric/whitespace delimiters) is still rejected.
     """
     isa_pos = raw_text.find("ISA")
     if isa_pos == -1:
@@ -53,27 +64,53 @@ def detect_delimiters(raw_text: str) -> Delimiters:
         )
 
     isa_block = raw_text[isa_pos:]
-    if len(isa_block) < _ISA_LEN:
+    if len(isa_block) < _ISA_MIN_SCAN_LEN:
         raise EnvelopeError(
-            f"ISA segment is truncated ({len(isa_block)} chars, need {_ISA_LEN})."
+            f"ISA segment is truncated ({len(isa_block)} chars, need at least "
+            f"{_ISA_MIN_SCAN_LEN})."
         )
 
+    # ISA01 starts at byte 3, so isa_block[3] is the first element separator.
     element = isa_block[3]
-    component = isa_block[104]
-    segment = isa_block[105]
+    if not element or element.isalnum() or element.isspace():
+        raise EnvelopeError(
+            f"ISA element separator is not a valid delimiter (got {element!r}). "
+            "File may be word-wrapped or corrupted."
+        )
 
-    for name, ch in (("element", element), ("component", component), ("segment", segment)):
+    # Scan forward, count occurrences of `element`. The 16th match marks the
+    # boundary between ISA15 and ISA16.
+    sep_positions: list[int] = []
+    for i in range(3, len(isa_block)):
+        if isa_block[i] == element:
+            sep_positions.append(i)
+            if len(sep_positions) == _ISA_ELEMENT_COUNT:
+                break
+
+    if len(sep_positions) < _ISA_ELEMENT_COUNT:
+        raise EnvelopeError(
+            f"ISA element separator {element!r} appears only "
+            f"{len(sep_positions)} times — expected {_ISA_ELEMENT_COUNT}. "
+            "ISA offsets look corrupted."
+        )
+
+    isa16_pos = sep_positions[-1] + 1     # ISA16 (component separator)
+    seg_term_pos = isa16_pos + 1          # segment terminator immediately after
+    if seg_term_pos >= len(isa_block):
+        raise EnvelopeError(
+            "ISA truncated before component separator + segment terminator. "
+            "ISA offsets look corrupted."
+        )
+
+    component = isa_block[isa16_pos]
+    segment = isa_block[seg_term_pos]
+
+    for name, ch in (("component", component), ("segment", segment)):
         if not ch or ch.isalnum() or ch.isspace():
             raise EnvelopeError(
                 f"ISA {name} separator is not a valid delimiter (got {ch!r}). "
                 "File may be word-wrapped or corrupted."
             )
-
-    if isa_block[6] != element:
-        raise EnvelopeError(
-            f"ISA delimiter mismatch: ISA[3]={element!r} vs ISA[6]={isa_block[6]!r}. "
-            "ISA offsets look corrupted."
-        )
 
     return Delimiters(element=element, component=component, segment=segment)
 

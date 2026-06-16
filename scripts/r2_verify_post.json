@@ -1,0 +1,5005 @@
+{
+  "status": "GO",
+  "findings": [],
+  "alembic_head": "0016_mv_pch_deleted",
+  "variants": {
+    "837D/dental": {
+      "variant": "837D",
+      "subtype": "dental",
+      "assertions": {
+        "corpus_non_empty": {
+          "pass": true,
+          "detail": "rows=1529"
+        },
+        "fit_transform_runs": {
+          "pass": true,
+          "detail": "0.62s"
+        },
+        "row_count_preserved": {
+          "pass": true,
+          "detail": "input=1529 output=1529"
+        },
+        "column_count_matches_registry": {
+          "pass": true,
+          "detail": "expected=116 actual=116"
+        },
+        "validate_feature_frame": {
+          "pass": true,
+          "detail": "ok"
+        },
+        "no_nan_in_features": {
+          "pass": true,
+          "detail": "columns_with_nan=0",
+          "cols": {}
+        },
+        "no_inf_in_features": {
+          "pass": true,
+          "detail": "columns_with_inf=0",
+          "cols": {}
+        },
+        "artifacts_present": {
+          "pass": true,
+          "detail": "encoder=True rarity_state=True ref_lookup=True"
+        },
+        "inventory_generated": {
+          "pass": true,
+          "detail": "categories=14 columns=116"
+        }
+      },
+      "inventory": {
+        "AUTHORIZATION": {
+          "registered_feature_count": 7,
+          "active_feature_count": 1,
+          "constant_feature_count": 6,
+          "high_null_count": 0,
+          "low_information_count": 6,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 1.1,
+          "mean_dominant_value_pct": 96.09,
+          "signal_density": 0.143,
+          "per_column": {
+            "has_prior_authorization": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 72.59646827992152,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "has_referral": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "auth_required_for_cpt_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "auth_missing_when_required": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "referral_required_for_specialty": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "referral_missing_when_required": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "auth_number_format_valid": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "AVAILABILITY": {
+          "registered_feature_count": 5,
+          "active_feature_count": 0,
+          "constant_feature_count": 5,
+          "high_null_count": 0,
+          "low_information_count": 5,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 1.0,
+          "mean_dominant_value_pct": 100.0,
+          "signal_density": 0.0,
+          "per_column": {
+            "avail_procedure_codes_metadata": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "avail_payer_policies": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "avail_ncci_edits": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "avail_lcd_coverage": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "reference_data_completeness": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "BASE": {
+          "registered_feature_count": 12,
+          "active_feature_count": 7,
+          "constant_feature_count": 5,
+          "high_null_count": 0,
+          "low_information_count": 5,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 256.3,
+          "mean_dominant_value_pct": 63.98,
+          "signal_density": 0.583,
+          "per_column": {
+            "total_charge_amount": {
+              "non_null_pct": 100.0,
+              "uniques": 1524,
+              "dominant_value_pct": 0.13080444735120994,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "total_billed_amount": {
+              "non_null_pct": 100.0,
+              "uniques": 1524,
+              "dominant_value_pct": 0.13080444735120994,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "charge_to_billed_ratio": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "line_count": {
+              "non_null_pct": 100.0,
+              "uniques": 9,
+              "dominant_value_pct": 58.20797907128842,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "diagnosis_count": {
+              "non_null_pct": 100.0,
+              "uniques": 3,
+              "dominant_value_pct": 69.45716154349248,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "total_units": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "units_per_line": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "service_month": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 53.172007848266844,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "service_day_of_week": {
+              "non_null_pct": 100.0,
+              "uniques": 7,
+              "dominant_value_pct": 15.696533682145192,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "weekend_service": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 70.96141268803139,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "service_duration_days": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_single_day_service": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "CLINICAL": {
+          "registered_feature_count": 8,
+          "active_feature_count": 2,
+          "constant_feature_count": 6,
+          "high_null_count": 0,
+          "low_information_count": 7,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 3.1,
+          "mean_dominant_value_pct": 96.23,
+          "signal_density": 0.25,
+          "per_column": {
+            "cpt_dx_alignment_score": {
+              "non_null_pct": 100.0,
+              "uniques": 17,
+              "dominant_value_pct": 72.66187050359713,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "has_unspecified_diagnosis": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "primary_dx_chapter_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "dx_severity_score": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "acute_vs_chronic_indicator": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 97.18770438194899,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "cpt_category_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_high_complexity_em": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "principal_dx_supports_procedure": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "CODING": {
+          "registered_feature_count": 11,
+          "active_feature_count": 0,
+          "constant_feature_count": 11,
+          "high_null_count": 0,
+          "low_information_count": 11,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 1.0,
+          "mean_dominant_value_pct": 100.0,
+          "signal_density": 0.0,
+          "per_column": {
+            "has_modifier": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "modifier_count_total": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "has_required_modifier_for_cpt": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "required_modifier_present": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "has_invalid_modifier_combo": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_likely_unbundled": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "cpt_pos_alignment_score": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "frequency_code_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_replacement_claim": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "cpt_frequency_for_patient_ytd": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "cpt_frequency_exceeds_limit": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "COVERAGE": {
+          "registered_feature_count": 10,
+          "active_feature_count": 4,
+          "constant_feature_count": 6,
+          "high_null_count": 0,
+          "low_information_count": 6,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 3.8,
+          "mean_dominant_value_pct": 76.37,
+          "signal_density": 0.4,
+          "per_column": {
+            "patient_age_at_service": {
+              "non_null_pct": 100.0,
+              "uniques": 21,
+              "dominant_value_pct": 14.780902550686724,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "patient_age_band": {
+              "non_null_pct": 100.0,
+              "uniques": 4,
+              "dominant_value_pct": 41.007194244604314,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "patient_age_vs_procedure_valid": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "patient_gender_vs_procedure_valid": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "cob_position_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 87.24656638325703,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "is_secondary_claim": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "has_secondary_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "payer_overall_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 5,
+              "dominant_value_pct": 20.66710268149117,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "payer_taxonomy_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "cross_payer_count_for_patient": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "DOCUMENTATION": {
+          "registered_feature_count": 5,
+          "active_feature_count": 0,
+          "constant_feature_count": 5,
+          "high_null_count": 0,
+          "low_information_count": 5,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 1.0,
+          "mean_dominant_value_pct": 100.0,
+          "signal_density": 0.0,
+          "per_column": {
+            "has_paperwork_attachment": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "paperwork_required_for_cpt": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "paperwork_missing_when_required": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "has_certification_segment": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "has_notes": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "ENCODED_CATEGORICAL": {
+          "registered_feature_count": 5,
+          "active_feature_count": 5,
+          "constant_feature_count": 0,
+          "high_null_count": 0,
+          "low_information_count": 0,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 26.2,
+          "mean_dominant_value_pct": 28.21,
+          "signal_density": 1.0,
+          "per_column": {
+            "payer_name_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 25,
+              "dominant_value_pct": 4.5127534336167425,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "primary_cpt_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 55,
+              "dominant_value_pct": 3.008502289077829,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "primary_dx_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 44,
+              "dominant_value_pct": 14.519293655984303,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "place_of_service_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 80.05232177894048,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "facility_type_code_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 5,
+              "dominant_value_pct": 38.97972531066056,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            }
+          }
+        },
+        "JOINT": {
+          "registered_feature_count": 6,
+          "active_feature_count": 5,
+          "constant_feature_count": 1,
+          "high_null_count": 0,
+          "low_information_count": 1,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 17.7,
+          "mean_dominant_value_pct": 47.08,
+          "signal_density": 0.833,
+          "per_column": {
+            "payer_cpt_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 49,
+              "dominant_value_pct": 5.232177894048398,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "payer_dx_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 22,
+              "dominant_value_pct": 70.76520601700457,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "payer_pos_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "cpt_dx_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 17,
+              "dominant_value_pct": 76.06278613472858,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "payer_provider_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 5,
+              "dominant_value_pct": 20.66710268149117,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "provider_cpt_denial_rate_joint": {
+              "non_null_pct": 100.0,
+              "uniques": 12,
+              "dominant_value_pct": 9.74493132766514,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            }
+          }
+        },
+        "PATIENT_HISTORY": {
+          "registered_feature_count": 10,
+          "active_feature_count": 10,
+          "constant_feature_count": 0,
+          "high_null_count": 0,
+          "low_information_count": 1,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 58.3,
+          "mean_dominant_value_pct": 73.52,
+          "signal_density": 1.0,
+          "per_column": {
+            "claims_in_last_30d": {
+              "non_null_pct": 100.0,
+              "uniques": 8,
+              "dominant_value_pct": 66.38325703073905,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "claims_in_last_90d": {
+              "non_null_pct": 100.0,
+              "uniques": 9,
+              "dominant_value_pct": 66.31785480706344,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "claims_in_last_365d": {
+              "non_null_pct": 100.0,
+              "uniques": 9,
+              "dominant_value_pct": 66.31785480706344,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "prior_denials_with_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 4,
+              "dominant_value_pct": 89.27403531720078,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "prior_denials_with_payer_and_cpt": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 98.29954218443427,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "prior_paid_with_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 5,
+              "dominant_value_pct": 83.97645519947679,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "days_since_last_claim": {
+              "non_null_pct": 100.0,
+              "uniques": 29,
+              "dominant_value_pct": 66.31785480706344,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "is_new_patient_to_provider": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 66.31785480706344,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "annual_charges_for_patient": {
+              "non_null_pct": 100.0,
+              "uniques": 511,
+              "dominant_value_pct": 66.31785480706344,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "same_day_visits_for_patient": {
+              "non_null_pct": 100.0,
+              "uniques": 4,
+              "dominant_value_pct": 65.66383257030739,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            }
+          }
+        },
+        "PROVIDER": {
+          "registered_feature_count": 10,
+          "active_feature_count": 2,
+          "constant_feature_count": 8,
+          "high_null_count": 0,
+          "low_information_count": 8,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 2.5,
+          "mean_dominant_value_pct": 83.04,
+          "signal_density": 0.2,
+          "per_column": {
+            "billing_provider_npi_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "rendering_provider_npi_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "referring_provider_present": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "billing_rendering_same_npi": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "provider_specialty_taxonomy_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "provider_overall_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "provider_payer_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 5,
+              "dominant_value_pct": 20.66710268149117,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "provider_cpt_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 12,
+              "dominant_value_pct": 9.74493132766514,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "provider_volume_band": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "provider_specialty_matches_cpt": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "RARITY": {
+          "registered_feature_count": 14,
+          "active_feature_count": 5,
+          "constant_feature_count": 9,
+          "high_null_count": 0,
+          "low_information_count": 11,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 1.4,
+          "mean_dominant_value_pct": 93.07,
+          "signal_density": 0.357,
+          "per_column": {
+            "is_rare_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_rare_cpt": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_rare_dx": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "unseen_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "unseen_cpt": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 97.71092217135383,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "unseen_dx": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 69.45716154349248,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "unseen_billing_provider": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "unseen_rendering_provider": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "unseen_any": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "missing_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "missing_diagnosis": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 69.45716154349248,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "missing_procedure": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 97.71092217135383,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "missing_pos": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "missing_count": {
+              "non_null_pct": 100.0,
+              "uniques": 3,
+              "dominant_value_pct": 68.60693263570961,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            }
+          }
+        },
+        "TIMELY": {
+          "registered_feature_count": 5,
+          "active_feature_count": 2,
+          "constant_feature_count": 3,
+          "high_null_count": 0,
+          "low_information_count": 3,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 18.6,
+          "mean_dominant_value_pct": 61.57,
+          "signal_density": 0.4,
+          "per_column": {
+            "service_to_submission_days": {
+              "non_null_pct": 100.0,
+              "uniques": 45,
+              "dominant_value_pct": 3.924133420536298,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "payer_timely_filing_days": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "timely_filing_proximity_ratio": {
+              "non_null_pct": 100.0,
+              "uniques": 45,
+              "dominant_value_pct": 3.924133420536298,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "is_past_timely_filing": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_near_timely_filing": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "VARIANT": {
+          "registered_feature_count": 8,
+          "active_feature_count": 5,
+          "constant_feature_count": 3,
+          "high_null_count": 0,
+          "low_information_count": 3,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 3.1,
+          "mean_dominant_value_pct": 70.98,
+          "signal_density": 0.625,
+          "per_column": {
+            "tooth_number_specified": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 57.22694571615435,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "tooth_surface_count": {
+              "non_null_pct": 100.0,
+              "uniques": 10,
+              "dominant_value_pct": 46.17396991497711,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "cdt_category_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 6,
+              "dominant_value_pct": 29.10398953564421,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "predetermination_filed": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "orthodontia_indicator": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_preventive_service": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 52.58338783518639,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "service_age_in_months_for_tooth": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "radiograph_within_year": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 82.73381294964028,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            }
+          }
+        }
+      },
+      "exception": null,
+      "overall_pass": true,
+      "corpus_rows": 1529,
+      "corpus_load_secs": 0.2762559000402689,
+      "fit_secs": 0.6167119999881834
+    },
+    "837P/healthcare": {
+      "variant": "837P",
+      "subtype": "healthcare",
+      "assertions": {
+        "corpus_non_empty": {
+          "pass": true,
+          "detail": "rows=50318"
+        },
+        "fit_transform_runs": {
+          "pass": true,
+          "detail": "5.41s"
+        },
+        "row_count_preserved": {
+          "pass": true,
+          "detail": "input=50318 output=50318"
+        },
+        "column_count_matches_registry": {
+          "pass": true,
+          "detail": "expected=114 actual=114"
+        },
+        "validate_feature_frame": {
+          "pass": true,
+          "detail": "ok"
+        },
+        "no_nan_in_features": {
+          "pass": true,
+          "detail": "columns_with_nan=0",
+          "cols": {}
+        },
+        "no_inf_in_features": {
+          "pass": true,
+          "detail": "columns_with_inf=0",
+          "cols": {}
+        },
+        "artifacts_present": {
+          "pass": true,
+          "detail": "encoder=True rarity_state=True ref_lookup=True"
+        },
+        "inventory_generated": {
+          "pass": true,
+          "detail": "categories=14 columns=114"
+        }
+      },
+      "inventory": {
+        "AUTHORIZATION": {
+          "registered_feature_count": 7,
+          "active_feature_count": 2,
+          "constant_feature_count": 5,
+          "high_null_count": 0,
+          "low_information_count": 7,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 1.3,
+          "mean_dominant_value_pct": 99.77,
+          "signal_density": 0.286,
+          "per_column": {
+            "has_prior_authorization": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 99.81517548392226,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "has_referral": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 98.55320163758496,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "auth_required_for_cpt_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "auth_missing_when_required": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "referral_required_for_specialty": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "referral_missing_when_required": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "auth_number_format_valid": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "AVAILABILITY": {
+          "registered_feature_count": 5,
+          "active_feature_count": 0,
+          "constant_feature_count": 5,
+          "high_null_count": 0,
+          "low_information_count": 5,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 1.0,
+          "mean_dominant_value_pct": 100.0,
+          "signal_density": 0.0,
+          "per_column": {
+            "avail_procedure_codes_metadata": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "avail_payer_policies": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "avail_ncci_edits": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "avail_lcd_coverage": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "reference_data_completeness": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "BASE": {
+          "registered_feature_count": 12,
+          "active_feature_count": 10,
+          "constant_feature_count": 2,
+          "high_null_count": 0,
+          "low_information_count": 3,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 7399.8,
+          "mean_dominant_value_pct": 43.95,
+          "signal_density": 0.833,
+          "per_column": {
+            "total_charge_amount": {
+              "non_null_pct": 100.0,
+              "uniques": 44075,
+              "dominant_value_pct": 0.011924162327596487,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "total_billed_amount": {
+              "non_null_pct": 100.0,
+              "uniques": 44033,
+              "dominant_value_pct": 0.011924162327596487,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "charge_to_billed_ratio": {
+              "non_null_pct": 100.0,
+              "uniques": 4,
+              "dominant_value_pct": 98.94868635478358,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "line_count": {
+              "non_null_pct": 100.0,
+              "uniques": 22,
+              "dominant_value_pct": 22.006041575579317,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "diagnosis_count": {
+              "non_null_pct": 100.0,
+              "uniques": 7,
+              "dominant_value_pct": 33.3777177153305,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "total_units": {
+              "non_null_pct": 100.0,
+              "uniques": 387,
+              "dominant_value_pct": 6.299932429746811,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "units_per_line": {
+              "non_null_pct": 100.0,
+              "uniques": 250,
+              "dominant_value_pct": 8.821892762033468,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "service_month": {
+              "non_null_pct": 100.0,
+              "uniques": 8,
+              "dominant_value_pct": 72.32799395842441,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "service_day_of_week": {
+              "non_null_pct": 100.0,
+              "uniques": 7,
+              "dominant_value_pct": 15.213243769625183,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "weekend_service": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 70.43006478794865,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "service_duration_days": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_single_day_service": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "CLINICAL": {
+          "registered_feature_count": 8,
+          "active_feature_count": 4,
+          "constant_feature_count": 4,
+          "high_null_count": 0,
+          "low_information_count": 4,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 39.9,
+          "mean_dominant_value_pct": 77.59,
+          "signal_density": 0.5,
+          "per_column": {
+            "cpt_dx_alignment_score": {
+              "non_null_pct": 100.0,
+              "uniques": 307,
+              "dominant_value_pct": 1.4865455701736954,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "has_unspecified_diagnosis": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 82.06804721968281,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "primary_dx_chapter_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "dx_severity_score": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "acute_vs_chronic_indicator": {
+              "non_null_pct": 100.0,
+              "uniques": 4,
+              "dominant_value_pct": 47.12627687904925,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "cpt_category_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_high_complexity_em": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 90.00357724869828,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "principal_dx_supports_procedure": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "CODING": {
+          "registered_feature_count": 11,
+          "active_feature_count": 2,
+          "constant_feature_count": 9,
+          "high_null_count": 0,
+          "low_information_count": 9,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 3.1,
+          "mean_dominant_value_pct": 91.02,
+          "signal_density": 0.182,
+          "per_column": {
+            "has_modifier": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 83.00011924162328,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "modifier_count_total": {
+              "non_null_pct": 100.0,
+              "uniques": 23,
+              "dominant_value_pct": 18.26980404626575,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "has_required_modifier_for_cpt": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "required_modifier_present": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "has_invalid_modifier_combo": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_likely_unbundled": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "cpt_pos_alignment_score": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "frequency_code_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_replacement_claim": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "cpt_frequency_for_patient_ytd": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "cpt_frequency_exceeds_limit": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "COVERAGE": {
+          "registered_feature_count": 10,
+          "active_feature_count": 4,
+          "constant_feature_count": 6,
+          "high_null_count": 0,
+          "low_information_count": 7,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 12.5,
+          "mean_dominant_value_pct": 73.88,
+          "signal_density": 0.4,
+          "per_column": {
+            "patient_age_at_service": {
+              "non_null_pct": 100.0,
+              "uniques": 96,
+              "dominant_value_pct": 1.4944950117254263,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "patient_age_band": {
+              "non_null_pct": 100.0,
+              "uniques": 4,
+              "dominant_value_pct": 31.239317937914862,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "patient_age_vs_procedure_valid": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "patient_gender_vs_procedure_valid": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "cob_position_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 96.36511785047101,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "is_secondary_claim": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "has_secondary_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "payer_overall_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 17,
+              "dominant_value_pct": 9.664533566516953,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "payer_taxonomy_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "cross_payer_count_for_patient": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "DOCUMENTATION": {
+          "registered_feature_count": 5,
+          "active_feature_count": 0,
+          "constant_feature_count": 5,
+          "high_null_count": 0,
+          "low_information_count": 5,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 1.0,
+          "mean_dominant_value_pct": 100.0,
+          "signal_density": 0.0,
+          "per_column": {
+            "has_paperwork_attachment": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "paperwork_required_for_cpt": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "paperwork_missing_when_required": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "has_certification_segment": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "has_notes": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "ENCODED_CATEGORICAL": {
+          "registered_feature_count": 5,
+          "active_feature_count": 5,
+          "constant_feature_count": 0,
+          "high_null_count": 0,
+          "low_information_count": 0,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 71.2,
+          "mean_dominant_value_pct": 6.26,
+          "signal_density": 1.0,
+          "per_column": {
+            "payer_name_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 81,
+              "dominant_value_pct": 2.0211455145276043,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "primary_cpt_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 121,
+              "dominant_value_pct": 3.4719185977185103,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "primary_dx_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 92,
+              "dominant_value_pct": 2.062880082674192,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "place_of_service_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 28,
+              "dominant_value_pct": 12.081163798243173,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "facility_type_code_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 34,
+              "dominant_value_pct": 11.679716999880759,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            }
+          }
+        },
+        "JOINT": {
+          "registered_feature_count": 6,
+          "active_feature_count": 6,
+          "constant_feature_count": 0,
+          "high_null_count": 0,
+          "low_information_count": 0,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 140.3,
+          "mean_dominant_value_pct": 6.28,
+          "signal_density": 1.0,
+          "per_column": {
+            "payer_cpt_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 217,
+              "dominant_value_pct": 2.1284629754759727,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "payer_dx_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 211,
+              "dominant_value_pct": 1.488532930561628,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "payer_pos_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 63,
+              "dominant_value_pct": 6.09722167017767,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "cpt_dx_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 307,
+              "dominant_value_pct": 1.379228109225327,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "payer_provider_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 17,
+              "dominant_value_pct": 9.664533566516953,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "provider_cpt_denial_rate_joint": {
+              "non_null_pct": 100.0,
+              "uniques": 27,
+              "dominant_value_pct": 16.912436901307682,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            }
+          }
+        },
+        "PATIENT_HISTORY": {
+          "registered_feature_count": 10,
+          "active_feature_count": 10,
+          "constant_feature_count": 0,
+          "high_null_count": 0,
+          "low_information_count": 9,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 222.6,
+          "mean_dominant_value_pct": 95.1,
+          "signal_density": 1.0,
+          "per_column": {
+            "claims_in_last_30d": {
+              "non_null_pct": 100.0,
+              "uniques": 14,
+              "dominant_value_pct": 95.96565841249652,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "claims_in_last_90d": {
+              "non_null_pct": 100.0,
+              "uniques": 14,
+              "dominant_value_pct": 95.73114988672046,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "claims_in_last_365d": {
+              "non_null_pct": 100.0,
+              "uniques": 14,
+              "dominant_value_pct": 95.73114988672046,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "prior_denials_with_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 5,
+              "dominant_value_pct": 96.93151556103184,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "prior_denials_with_payer_and_cpt": {
+              "non_null_pct": 100.0,
+              "uniques": 3,
+              "dominant_value_pct": 97.9371199173258,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "prior_paid_with_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 4,
+              "dominant_value_pct": 98.4458841766366,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "days_since_last_claim": {
+              "non_null_pct": 100.0,
+              "uniques": 53,
+              "dominant_value_pct": 95.73114988672046,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "is_new_patient_to_provider": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 95.79077069835844,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "annual_charges_for_patient": {
+              "non_null_pct": 100.0,
+              "uniques": 2113,
+              "dominant_value_pct": 95.73114988672046,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "same_day_visits_for_patient": {
+              "non_null_pct": 100.0,
+              "uniques": 4,
+              "dominant_value_pct": 82.97428355658015,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            }
+          }
+        },
+        "PROVIDER": {
+          "registered_feature_count": 10,
+          "active_feature_count": 4,
+          "constant_feature_count": 6,
+          "high_null_count": 0,
+          "low_information_count": 8,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 5.4,
+          "mean_dominant_value_pct": 82.64,
+          "signal_density": 0.4,
+          "per_column": {
+            "billing_provider_npi_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "rendering_provider_npi_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "referring_provider_present": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "billing_rendering_same_npi": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "provider_specialty_taxonomy_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "provider_overall_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 99.93242974681029,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "provider_payer_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 17,
+              "dominant_value_pct": 9.664533566516953,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "provider_cpt_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 27,
+              "dominant_value_pct": 16.912436901307682,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "provider_volume_band": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 99.93242974681029,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "provider_specialty_matches_cpt": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "RARITY": {
+          "registered_feature_count": 14,
+          "active_feature_count": 12,
+          "constant_feature_count": 2,
+          "high_null_count": 0,
+          "low_information_count": 14,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 1.9,
+          "mean_dominant_value_pct": 99.22,
+          "signal_density": 0.857,
+          "per_column": {
+            "is_rare_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 99.73369370801701,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "is_rare_cpt": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 99.93242974681029,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "is_rare_dx": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 99.93441710719821,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "unseen_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 99.80126396120673,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "unseen_cpt": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 99.73170634762909,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "unseen_dx": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 98.94868635478358,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "unseen_billing_provider": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "unseen_rendering_provider": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 96.92157875909217,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "unseen_any": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 97.10044119400612,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "missing_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 99.80126396120673,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "missing_diagnosis": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 98.94868635478358,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "missing_procedure": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 99.73170634762909,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "missing_pos": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "missing_count": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 98.48165666361938,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            }
+          }
+        },
+        "TIMELY": {
+          "registered_feature_count": 5,
+          "active_feature_count": 4,
+          "constant_feature_count": 1,
+          "high_null_count": 0,
+          "low_information_count": 3,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 69.8,
+          "mean_dominant_value_pct": 60.85,
+          "signal_density": 0.8,
+          "per_column": {
+            "service_to_submission_days": {
+              "non_null_pct": 100.0,
+              "uniques": 172,
+              "dominant_value_pct": 2.8955840852180135,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "payer_timely_filing_days": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "timely_filing_proximity_ratio": {
+              "non_null_pct": 100.0,
+              "uniques": 172,
+              "dominant_value_pct": 2.8955840852180135,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "is_past_timely_filing": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 99.04209229301641,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "is_near_timely_filing": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 99.4296275686633,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            }
+          }
+        },
+        "VARIANT": {
+          "registered_feature_count": 6,
+          "active_feature_count": 3,
+          "constant_feature_count": 3,
+          "high_null_count": 0,
+          "low_information_count": 4,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 2.2,
+          "mean_dominant_value_pct": 92.74,
+          "signal_density": 0.5,
+          "per_column": {
+            "e_and_m_level": {
+              "non_null_pct": 100.0,
+              "uniques": 6,
+              "dominant_value_pct": 76.3802217894193,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "is_telehealth": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 82.72387614770062,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "surgery_global_period_active": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_preventive_visit": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 97.30712667435112,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "is_consultation": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "cob_indicator": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        }
+      },
+      "exception": null,
+      "overall_pass": true,
+      "corpus_rows": 50318,
+      "corpus_load_secs": 6.461883499985561,
+      "fit_secs": 5.406416799989529
+    },
+    "837I/home_care": {
+      "variant": "837I",
+      "subtype": "home_care",
+      "assertions": {
+        "corpus_non_empty": {
+          "pass": true,
+          "detail": "rows=758"
+        },
+        "fit_transform_runs": {
+          "pass": true,
+          "detail": "0.19s"
+        },
+        "row_count_preserved": {
+          "pass": true,
+          "detail": "input=758 output=758"
+        },
+        "column_count_matches_registry": {
+          "pass": true,
+          "detail": "expected=119 actual=119"
+        },
+        "validate_feature_frame": {
+          "pass": true,
+          "detail": "ok"
+        },
+        "no_nan_in_features": {
+          "pass": true,
+          "detail": "columns_with_nan=0",
+          "cols": {}
+        },
+        "no_inf_in_features": {
+          "pass": true,
+          "detail": "columns_with_inf=0",
+          "cols": {}
+        },
+        "artifacts_present": {
+          "pass": true,
+          "detail": "encoder=True rarity_state=True ref_lookup=True"
+        },
+        "inventory_generated": {
+          "pass": true,
+          "detail": "categories=14 columns=119"
+        }
+      },
+      "inventory": {
+        "AUTHORIZATION": {
+          "registered_feature_count": 7,
+          "active_feature_count": 1,
+          "constant_feature_count": 6,
+          "high_null_count": 0,
+          "low_information_count": 7,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 1.1,
+          "mean_dominant_value_pct": 99.59,
+          "signal_density": 0.143,
+          "per_column": {
+            "has_prior_authorization": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 97.0976253298153,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "has_referral": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "auth_required_for_cpt_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "auth_missing_when_required": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "referral_required_for_specialty": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "referral_missing_when_required": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "auth_number_format_valid": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "AVAILABILITY": {
+          "registered_feature_count": 5,
+          "active_feature_count": 0,
+          "constant_feature_count": 5,
+          "high_null_count": 0,
+          "low_information_count": 5,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 1.0,
+          "mean_dominant_value_pct": 100.0,
+          "signal_density": 0.0,
+          "per_column": {
+            "avail_procedure_codes_metadata": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "avail_payer_policies": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "avail_ncci_edits": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "avail_lcd_coverage": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "reference_data_completeness": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "BASE": {
+          "registered_feature_count": 12,
+          "active_feature_count": 9,
+          "constant_feature_count": 3,
+          "high_null_count": 0,
+          "low_information_count": 3,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 132.5,
+          "mean_dominant_value_pct": 49.11,
+          "signal_density": 0.75,
+          "per_column": {
+            "total_charge_amount": {
+              "non_null_pct": 100.0,
+              "uniques": 751,
+              "dominant_value_pct": 0.2638522427440633,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "total_billed_amount": {
+              "non_null_pct": 100.0,
+              "uniques": 751,
+              "dominant_value_pct": 0.2638522427440633,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "charge_to_billed_ratio": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "line_count": {
+              "non_null_pct": 100.0,
+              "uniques": 10,
+              "dominant_value_pct": 24.53825857519789,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "diagnosis_count": {
+              "non_null_pct": 100.0,
+              "uniques": 6,
+              "dominant_value_pct": 31.926121372031663,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "total_units": {
+              "non_null_pct": 100.0,
+              "uniques": 36,
+              "dominant_value_pct": 23.350923482849606,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "units_per_line": {
+              "non_null_pct": 100.0,
+              "uniques": 21,
+              "dominant_value_pct": 51.97889182058047,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "service_month": {
+              "non_null_pct": 100.0,
+              "uniques": 3,
+              "dominant_value_pct": 67.41424802110818,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "service_day_of_week": {
+              "non_null_pct": 100.0,
+              "uniques": 7,
+              "dominant_value_pct": 16.75461741424802,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "weekend_service": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 72.82321899736148,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "service_duration_days": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_single_day_service": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "CLINICAL": {
+          "registered_feature_count": 8,
+          "active_feature_count": 3,
+          "constant_feature_count": 5,
+          "high_null_count": 0,
+          "low_information_count": 5,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 9.1,
+          "mean_dominant_value_pct": 76.42,
+          "signal_density": 0.375,
+          "per_column": {
+            "cpt_dx_alignment_score": {
+              "non_null_pct": 100.0,
+              "uniques": 62,
+              "dominant_value_pct": 6.332453825857519,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "has_unspecified_diagnosis": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 64.90765171503958,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "primary_dx_chapter_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "dx_severity_score": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "acute_vs_chronic_indicator": {
+              "non_null_pct": 100.0,
+              "uniques": 4,
+              "dominant_value_pct": 40.105540897097626,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "cpt_category_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_high_complexity_em": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "principal_dx_supports_procedure": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "CODING": {
+          "registered_feature_count": 11,
+          "active_feature_count": 2,
+          "constant_feature_count": 9,
+          "high_null_count": 0,
+          "low_information_count": 10,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 2.3,
+          "mean_dominant_value_pct": 93.68,
+          "signal_density": 0.182,
+          "per_column": {
+            "has_modifier": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 99.2084432717678,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "modifier_count_total": {
+              "non_null_pct": 100.0,
+              "uniques": 14,
+              "dominant_value_pct": 31.266490765171504,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "has_required_modifier_for_cpt": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "required_modifier_present": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "has_invalid_modifier_combo": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_likely_unbundled": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "cpt_pos_alignment_score": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "frequency_code_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_replacement_claim": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "cpt_frequency_for_patient_ytd": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "cpt_frequency_exceeds_limit": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "COVERAGE": {
+          "registered_feature_count": 10,
+          "active_feature_count": 4,
+          "constant_feature_count": 6,
+          "high_null_count": 0,
+          "low_information_count": 6,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 3.8,
+          "mean_dominant_value_pct": 76.33,
+          "signal_density": 0.4,
+          "per_column": {
+            "patient_age_at_service": {
+              "non_null_pct": 100.0,
+              "uniques": 21,
+              "dominant_value_pct": 14.907651715039577,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "patient_age_band": {
+              "non_null_pct": 100.0,
+              "uniques": 4,
+              "dominant_value_pct": 39.577836411609496,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "patient_age_vs_procedure_valid": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "patient_gender_vs_procedure_valid": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "cob_position_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 87.20316622691293,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "is_secondary_claim": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "has_secondary_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "payer_overall_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 5,
+              "dominant_value_pct": 21.63588390501319,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "payer_taxonomy_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "cross_payer_count_for_patient": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "DOCUMENTATION": {
+          "registered_feature_count": 5,
+          "active_feature_count": 0,
+          "constant_feature_count": 5,
+          "high_null_count": 0,
+          "low_information_count": 5,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 1.0,
+          "mean_dominant_value_pct": 100.0,
+          "signal_density": 0.0,
+          "per_column": {
+            "has_paperwork_attachment": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "paperwork_required_for_cpt": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "paperwork_missing_when_required": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "has_certification_segment": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "has_notes": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "ENCODED_CATEGORICAL": {
+          "registered_feature_count": 5,
+          "active_feature_count": 5,
+          "constant_feature_count": 0,
+          "high_null_count": 0,
+          "low_information_count": 0,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 21.4,
+          "mean_dominant_value_pct": 19.13,
+          "signal_density": 1.0,
+          "per_column": {
+            "payer_name_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 25,
+              "dominant_value_pct": 5.672823218997362,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "primary_cpt_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 35,
+              "dominant_value_pct": 3.9577836411609497,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "primary_dx_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 39,
+              "dominant_value_pct": 6.200527704485488,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "place_of_service_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 60.15831134564644,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "facility_type_code_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 6,
+              "dominant_value_pct": 19.65699208443272,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            }
+          }
+        },
+        "JOINT": {
+          "registered_feature_count": 6,
+          "active_feature_count": 5,
+          "constant_feature_count": 1,
+          "high_null_count": 0,
+          "low_information_count": 1,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 22.5,
+          "mean_dominant_value_pct": 26.91,
+          "signal_density": 0.833,
+          "per_column": {
+            "payer_cpt_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 28,
+              "dominant_value_pct": 8.443271767810026,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "payer_dx_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 32,
+              "dominant_value_pct": 11.87335092348285,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "payer_pos_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "cpt_dx_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 62,
+              "dominant_value_pct": 3.9577836411609497,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "payer_provider_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 5,
+              "dominant_value_pct": 21.63588390501319,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "provider_cpt_denial_rate_joint": {
+              "non_null_pct": 100.0,
+              "uniques": 7,
+              "dominant_value_pct": 15.567282321899736,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            }
+          }
+        },
+        "PATIENT_HISTORY": {
+          "registered_feature_count": 10,
+          "active_feature_count": 10,
+          "constant_feature_count": 0,
+          "high_null_count": 0,
+          "low_information_count": 1,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 50.0,
+          "mean_dominant_value_pct": 61.29,
+          "signal_density": 1.0,
+          "per_column": {
+            "claims_in_last_30d": {
+              "non_null_pct": 100.0,
+              "uniques": 8,
+              "dominant_value_pct": 44.06332453825858,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "claims_in_last_90d": {
+              "non_null_pct": 100.0,
+              "uniques": 8,
+              "dominant_value_pct": 43.79947229551451,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "claims_in_last_365d": {
+              "non_null_pct": 100.0,
+              "uniques": 8,
+              "dominant_value_pct": 43.79947229551451,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "prior_denials_with_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 4,
+              "dominant_value_pct": 86.01583113456465,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "prior_denials_with_payer_and_cpt": {
+              "non_null_pct": 100.0,
+              "uniques": 3,
+              "dominant_value_pct": 96.43799472295514,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "prior_paid_with_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 4,
+              "dominant_value_pct": 83.90501319261213,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "days_since_last_claim": {
+              "non_null_pct": 100.0,
+              "uniques": 33,
+              "dominant_value_pct": 43.79947229551451,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "is_new_patient_to_provider": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 56.20052770448549,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "annual_charges_for_patient": {
+              "non_null_pct": 100.0,
+              "uniques": 426,
+              "dominant_value_pct": 43.79947229551451,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "same_day_visits_for_patient": {
+              "non_null_pct": 100.0,
+              "uniques": 4,
+              "dominant_value_pct": 71.10817941952507,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            }
+          }
+        },
+        "PROVIDER": {
+          "registered_feature_count": 10,
+          "active_feature_count": 2,
+          "constant_feature_count": 8,
+          "high_null_count": 0,
+          "low_information_count": 8,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 2.0,
+          "mean_dominant_value_pct": 83.72,
+          "signal_density": 0.2,
+          "per_column": {
+            "billing_provider_npi_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "rendering_provider_npi_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "referring_provider_present": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "billing_rendering_same_npi": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "provider_specialty_taxonomy_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "provider_overall_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "provider_payer_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 5,
+              "dominant_value_pct": 21.63588390501319,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "provider_cpt_denial_rate": {
+              "non_null_pct": 100.0,
+              "uniques": 7,
+              "dominant_value_pct": 15.567282321899736,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "provider_volume_band": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "provider_specialty_matches_cpt": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "RARITY": {
+          "registered_feature_count": 14,
+          "active_feature_count": 5,
+          "constant_feature_count": 9,
+          "high_null_count": 0,
+          "low_information_count": 13,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 1.4,
+          "mean_dominant_value_pct": 98.48,
+          "signal_density": 0.357,
+          "per_column": {
+            "is_rare_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_rare_cpt": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_rare_dx": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "unseen_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "unseen_cpt": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "unseen_dx": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 96.56992084432717,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "unseen_billing_provider": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "unseen_rendering_provider": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 96.17414248021109,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "unseen_any": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 92.87598944591029,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "missing_payer": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "missing_diagnosis": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 96.56992084432717,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            },
+            "missing_procedure": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "missing_pos": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "missing_count": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 96.56992084432717,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": true,
+              "flags": [
+                "low_information"
+              ]
+            }
+          }
+        },
+        "TIMELY": {
+          "registered_feature_count": 5,
+          "active_feature_count": 2,
+          "constant_feature_count": 3,
+          "high_null_count": 0,
+          "low_information_count": 3,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 23.8,
+          "mean_dominant_value_pct": 62.11,
+          "signal_density": 0.4,
+          "per_column": {
+            "service_to_submission_days": {
+              "non_null_pct": 100.0,
+              "uniques": 58,
+              "dominant_value_pct": 5.277044854881266,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "payer_timely_filing_days": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "timely_filing_proximity_ratio": {
+              "non_null_pct": 100.0,
+              "uniques": 58,
+              "dominant_value_pct": 5.277044854881266,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "is_past_timely_filing": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_near_timely_filing": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            }
+          }
+        },
+        "VARIANT": {
+          "registered_feature_count": 11,
+          "active_feature_count": 2,
+          "constant_feature_count": 9,
+          "high_null_count": 0,
+          "low_information_count": 9,
+          "mean_non_null_pct": 100.0,
+          "mean_cardinality": 1.6,
+          "mean_dominant_value_pct": 92.05,
+          "signal_density": 0.182,
+          "per_column": {
+            "hipps_code_encoded": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "episode_length_days": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "revenue_code_count_skilled": {
+              "non_null_pct": 100.0,
+              "uniques": 7,
+              "dominant_value_pct": 56.33245382585752,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            },
+            "visit_count_in_episode": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "homebound_certification_present": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "oasis_within_5_days": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "face_to_face_encounter_present": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "physician_certification_present": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_lupa": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "discipline_count_total": {
+              "non_null_pct": 100.0,
+              "uniques": 1,
+              "dominant_value_pct": 100.0,
+              "is_constant": true,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": true,
+              "is_active": false,
+              "flags": [
+                "constant"
+              ]
+            },
+            "is_recertification_episode": {
+              "non_null_pct": 100.0,
+              "uniques": 2,
+              "dominant_value_pct": 56.20052770448549,
+              "is_constant": false,
+              "is_all_null": false,
+              "is_high_null": false,
+              "low_information_flag": false,
+              "is_active": true,
+              "flags": []
+            }
+          }
+        }
+      },
+      "exception": null,
+      "overall_pass": true,
+      "corpus_rows": 758,
+      "corpus_load_secs": 0.12638269999297336,
+      "fit_secs": 0.19316389999585226
+    }
+  },
+  "summary": {
+    "total_registered_feature_instances": 349,
+    "total_active_feature_instances": 164,
+    "total_constant_feature_instances": 185,
+    "total_high_null_feature_instances": 0,
+    "total_low_information_feature_instances": 226,
+    "overall_signal_density": 0.47
+  }
+}

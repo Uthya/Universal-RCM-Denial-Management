@@ -52,6 +52,44 @@ class TestDetectDelimiters:
         with pytest.raises(EnvelopeError):
             detect_delimiters(_build_isa(element=" "))
 
+    # ----- CR-059 regression tests --------------------------------------
+
+    def test_valid_106_byte_isa_still_parses(self):
+        """Regression: a fully spec-compliant 106-byte ISA (the format the
+        original fixed-offset parser was written for) must continue to
+        parse with identical (element=*, component=:, segment=~)."""
+        isa = _build_isa()
+        # _build_isa packs all fields to required widths, so total length
+        # (including terminator) MUST be exactly 106.
+        assert len(isa) == 106, f"_build_isa returned {len(isa)} chars, expected 106"
+        d = detect_delimiters(isa)
+        assert (d.element, d.component, d.segment) == ("*", ":", "~")
+
+    def test_short_isa13_real_world(self):
+        """Real malformed file from the UQ10K dataset: ISA13 is 4 chars
+        instead of the spec-required 9. Total ISA is 101 chars (5 short).
+        Fixed-offset reads put the parser inside the GS segment; the
+        scan-and-count fix recovers correctly."""
+        # Reproduces the bytes captured from UQ10K_pair_001_original_835.dat
+        # (bytes 0..101 — ISA segment with 4-char ISA13 then '~' terminator
+        # then 'GS*HP*...' starts at byte 101).
+        isa = (
+            "ISA*00*          *00*          *ZZ*31114          *30*1730384655     *"
+            "260427*0507*[*00501*1020*0*T*:~"
+            "GS*HP*31114*1730384655*20260427*0507*1020*X*005010X221A1~"
+        )
+        d = detect_delimiters(isa)
+        assert d.element == "*"
+        assert d.component == ":"
+        assert d.segment == "~"
+
+    def test_corrupted_isa_missing_separators_raises(self):
+        """Genuine corruption: ISA prefix is present but the element
+        separator only appears 5 times. Must still raise."""
+        bad = "ISA*00*FOO*BAR*BAZ*QUX" + "X" * 200
+        with pytest.raises(EnvelopeError, match="element separator"):
+            detect_delimiters(bad)
+
 
 class TestDecodeEdi:
     def test_utf8(self):

@@ -1,0 +1,525 @@
+{
+  "status": "GO",
+  "findings": [],
+  "variants": {
+    "837D/dental": {
+      "variant": "837D",
+      "subtype": "dental",
+      "assertions": {
+        "0_r3_baseline_present": {
+          "pass": true,
+          "detail": "artifacts\\featurebuilder\\837D_dental"
+        },
+        "1_train_variant_runs": {
+          "pass": true,
+          "detail": "85.87s"
+        },
+        "7_artifact_reload": {
+          "pass": true,
+          "detail": "both bundles loaded"
+        },
+        "2_feature_columns_identical": {
+          "pass": true,
+          "detail": "r3_n=116 r4_n=116"
+        },
+        "3_service_variant_identical": {
+          "pass": true,
+          "detail": "r3='837D' r4='837D'"
+        },
+        "4_claim_subtype_identical": {
+          "pass": true,
+          "detail": "r3='dental' r4='dental'"
+        },
+        "5_decision_threshold_identical": {
+          "pass": true,
+          "detail": "r3=0.51 r4=0.51"
+        },
+        "6_metrics_keys_identical": {
+          "pass": true,
+          "detail": "r3_keys=['brier_calibrated', 'brier_uncalibrated', 'f1_at_threshold', 'low_prob_cutoff', 'n_training_rows', 'pr_auc', 'precision_at_threshold', 'prevalence', 'recall_at_threshold', 'roc_auc']"
+        },
+        "8_post_load_metadata_consistent": {
+          "pass": true,
+          "detail": "fe_ver: r3=v1.0.0 r4=v1.0.0; model_ver: r3=v1.0.0 r4=v1.0.0; cal_ver: r3=isotonic_v1 r4=isotonic_v1; train_size: r3=2835 r4=2835; prevalence: r3=0.0924 r4=0.0924"
+        },
+        "9_predict_proba_identical": {
+          "pass": true,
+          "detail": "raw_max_abs_diff=0.000e+00 cal_max_abs_diff=0.000e+00",
+          "sample_size": 8,
+          "r3_raw_first3": [
+            0.0013464430812746286,
+            0.9953698515892029,
+            0.6806977987289429
+          ],
+          "r4_raw_first3": [
+            0.0013464430812746286,
+            0.9953698515892029,
+            0.6806977987289429
+          ],
+          "r3_cal_first3": [
+            0.0010000000474974513,
+            0.9358974099159241,
+            0.4285714328289032
+          ],
+          "r4_cal_first3": [
+            0.0010000000474974513,
+            0.9358974099159241,
+            0.4285714328289032
+          ]
+        }
+      },
+      "byte_equality_report": {
+        "all_bytes_equal": false,
+        "per_file": {
+          "calibrator.joblib": {
+            "bytes_equal": true,
+            "size_d1": 815,
+            "size_d2": 815,
+            "sha256_d1": "cefee4ed811ca6f2",
+            "sha256_d2": "cefee4ed811ca6f2"
+          },
+          "encoder.joblib": {
+            "bytes_equal": false,
+            "size_d1": 3713,
+            "size_d2": 3713,
+            "sha256_d1": "b68d0428d9f3b2ea",
+            "sha256_d2": "0ab89d5ed1efabe0"
+          },
+          "feature_schema.json": {
+            "bytes_equal": true,
+            "size_d1": 4325,
+            "size_d2": 4325,
+            "sha256_d1": "a2035543d1ae7505",
+            "sha256_d2": "a2035543d1ae7505"
+          },
+          "model.json": {
+            "bytes_equal": true,
+            "size_d1": 395570,
+            "size_d2": 395570,
+            "sha256_d1": "085f1bce758dcb28",
+            "sha256_d2": "085f1bce758dcb28"
+          },
+          "rarity_state.joblib": {
+            "bytes_equal": true,
+            "size_d1": 579,
+            "size_d2": 579,
+            "sha256_d1": "cfc295b467ace0c2",
+            "sha256_d2": "cfc295b467ace0c2"
+          }
+        }
+      },
+      "value_deltas": {
+        "metrics": {
+          "n_training_rows": {
+            "r3": 2835.0,
+            "r4": 2835.0,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "prevalence": {
+            "r3": 0.09241622574955909,
+            "r4": 0.09241622574955909,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "precision_at_threshold": {
+            "r3": 0.8592592592592593,
+            "r4": 0.8592592592592593,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "recall_at_threshold": {
+            "r3": 0.8854961832061069,
+            "r4": 0.8854961832061069,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "f1_at_threshold": {
+            "r3": 0.8721804511278195,
+            "r4": 0.8721804511278195,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "roc_auc": {
+            "r3": 0.9941146017213399,
+            "r4": 0.9941146017213399,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "pr_auc": {
+            "r3": 0.9268648332747865,
+            "r4": 0.9268648332747865,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "brier_uncalibrated": {
+            "r3": 0.020985951647162437,
+            "r4": 0.020985951647162437,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "brier_calibrated": {
+            "r3": 0.0170685276389122,
+            "r4": 0.0170685276389122,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "low_prob_cutoff": {
+            "r3": 0.05,
+            "r4": 0.05,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          }
+        }
+      },
+      "exception": null,
+      "overall_pass": true
+    },
+    "837P/healthcare": {
+      "variant": "837P",
+      "subtype": "healthcare",
+      "assertions": {
+        "0_r3_baseline_present": {
+          "pass": true,
+          "detail": "artifacts\\featurebuilder\\837P_healthcare"
+        },
+        "1_train_variant_runs": {
+          "pass": true,
+          "detail": "63.20s"
+        },
+        "7_artifact_reload": {
+          "pass": true,
+          "detail": "both bundles loaded"
+        },
+        "2_feature_columns_identical": {
+          "pass": true,
+          "detail": "r3_n=114 r4_n=114"
+        },
+        "3_service_variant_identical": {
+          "pass": true,
+          "detail": "r3='837P' r4='837P'"
+        },
+        "4_claim_subtype_identical": {
+          "pass": true,
+          "detail": "r3='healthcare' r4='healthcare'"
+        },
+        "5_decision_threshold_identical": {
+          "pass": true,
+          "detail": "r3=0.51 r4=0.51"
+        },
+        "6_metrics_keys_identical": {
+          "pass": true,
+          "detail": "r3_keys=['brier_calibrated', 'brier_uncalibrated', 'f1_at_threshold', 'low_prob_cutoff', 'n_training_rows', 'pr_auc', 'precision_at_threshold', 'prevalence', 'recall_at_threshold', 'roc_auc']"
+        },
+        "8_post_load_metadata_consistent": {
+          "pass": true,
+          "detail": "fe_ver: r3=v1.0.0 r4=v1.0.0; model_ver: r3=v1.0.0 r4=v1.0.0; cal_ver: r3=isotonic_v1 r4=isotonic_v1; train_size: r3=2107 r4=2107; prevalence: r3=0.1220 r4=0.1220"
+        },
+        "9_predict_proba_identical": {
+          "pass": true,
+          "detail": "raw_max_abs_diff=0.000e+00 cal_max_abs_diff=0.000e+00",
+          "sample_size": 8,
+          "r3_raw_first3": [
+            0.8867045640945435,
+            0.004940727259963751,
+            0.0008702898630872369
+          ],
+          "r4_raw_first3": [
+            0.8867045640945435,
+            0.004940727259963751,
+            0.0008702898630872369
+          ],
+          "r3_cal_first3": [
+            0.5384615659713745,
+            0.008333333767950535,
+            0.0010000000474974513
+          ],
+          "r4_cal_first3": [
+            0.5384615659713745,
+            0.008333333767950535,
+            0.0010000000474974513
+          ]
+        }
+      },
+      "byte_equality_report": {
+        "all_bytes_equal": false,
+        "per_file": {
+          "calibrator.joblib": {
+            "bytes_equal": true,
+            "size_d1": 823,
+            "size_d2": 823,
+            "sha256_d1": "b700f8f7572a600e",
+            "sha256_d2": "b700f8f7572a600e"
+          },
+          "encoder.joblib": {
+            "bytes_equal": false,
+            "size_d1": 3928,
+            "size_d2": 3928,
+            "sha256_d1": "6e38f80d5e625b60",
+            "sha256_d2": "a9731a5e68949de0"
+          },
+          "feature_schema.json": {
+            "bytes_equal": true,
+            "size_d1": 4234,
+            "size_d2": 4234,
+            "sha256_d1": "64e6f2fdb79fcd89",
+            "sha256_d2": "64e6f2fdb79fcd89"
+          },
+          "model.json": {
+            "bytes_equal": true,
+            "size_d1": 373803,
+            "size_d2": 373803,
+            "sha256_d1": "9f427aa4658fb656",
+            "sha256_d2": "9f427aa4658fb656"
+          },
+          "rarity_state.joblib": {
+            "bytes_equal": true,
+            "size_d1": 722,
+            "size_d2": 722,
+            "sha256_d1": "7bacd8b9971bb81c",
+            "sha256_d2": "7bacd8b9971bb81c"
+          }
+        }
+      },
+      "value_deltas": {
+        "metrics": {
+          "n_training_rows": {
+            "r3": 2107.0,
+            "r4": 2107.0,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "prevalence": {
+            "r3": 0.12197437114380635,
+            "r4": 0.12197437114380635,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "precision_at_threshold": {
+            "r3": 0.8576923076923076,
+            "r4": 0.8576923076923076,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "recall_at_threshold": {
+            "r3": 0.867704280155642,
+            "r4": 0.867704280155642,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "f1_at_threshold": {
+            "r3": 0.8626692456479691,
+            "r4": 0.8626692456479691,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "roc_auc": {
+            "r3": 0.9887359343779577,
+            "r4": 0.9887359343779577,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "pr_auc": {
+            "r3": 0.9328820325788203,
+            "r4": 0.9328820325788203,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "brier_uncalibrated": {
+            "r3": 0.02803867682814598,
+            "r4": 0.02803867682814598,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "brier_calibrated": {
+            "r3": 0.023013360798358917,
+            "r4": 0.023013360798358917,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "low_prob_cutoff": {
+            "r3": 0.05,
+            "r4": 0.05,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          }
+        }
+      },
+      "exception": null,
+      "overall_pass": true
+    },
+    "837I/home_care": {
+      "variant": "837I",
+      "subtype": "home_care",
+      "assertions": {
+        "0_r3_baseline_present": {
+          "pass": true,
+          "detail": "artifacts\\featurebuilder\\837I_home_care"
+        },
+        "1_train_variant_runs": {
+          "pass": true,
+          "detail": "51.38s"
+        },
+        "7_artifact_reload": {
+          "pass": true,
+          "detail": "both bundles loaded"
+        },
+        "2_feature_columns_identical": {
+          "pass": true,
+          "detail": "r3_n=119 r4_n=119"
+        },
+        "3_service_variant_identical": {
+          "pass": true,
+          "detail": "r3='837I' r4='837I'"
+        },
+        "4_claim_subtype_identical": {
+          "pass": true,
+          "detail": "r3='home_care' r4='home_care'"
+        },
+        "5_decision_threshold_identical": {
+          "pass": true,
+          "detail": "r3=0.43 r4=0.43"
+        },
+        "6_metrics_keys_identical": {
+          "pass": true,
+          "detail": "r3_keys=['brier_calibrated', 'brier_uncalibrated', 'f1_at_threshold', 'low_prob_cutoff', 'n_training_rows', 'pr_auc', 'precision_at_threshold', 'prevalence', 'recall_at_threshold', 'roc_auc']"
+        },
+        "8_post_load_metadata_consistent": {
+          "pass": true,
+          "detail": "fe_ver: r3=v1.0.0 r4=v1.0.0; model_ver: r3=v1.0.0 r4=v1.0.0; cal_ver: r3=isotonic_v1 r4=isotonic_v1; train_size: r3=1374 r4=1374; prevalence: r3=0.1070 r4=0.1070"
+        },
+        "9_predict_proba_identical": {
+          "pass": true,
+          "detail": "raw_max_abs_diff=0.000e+00 cal_max_abs_diff=0.000e+00",
+          "sample_size": 8,
+          "r3_raw_first3": [
+            0.00036187266232445836,
+            0.9862062335014343,
+            0.02782052382826805
+          ],
+          "r4_raw_first3": [
+            0.00036187266232445836,
+            0.9862062335014343,
+            0.02782052382826805
+          ],
+          "r3_cal_first3": [
+            0.0010000000474974513,
+            0.7647058963775635,
+            0.023952096700668335
+          ],
+          "r4_cal_first3": [
+            0.0010000000474974513,
+            0.7647058963775635,
+            0.023952096700668335
+          ]
+        }
+      },
+      "byte_equality_report": {
+        "all_bytes_equal": false,
+        "per_file": {
+          "calibrator.joblib": {
+            "bytes_equal": true,
+            "size_d1": 755,
+            "size_d2": 755,
+            "sha256_d1": "736b40a91b772a2e",
+            "sha256_d2": "736b40a91b772a2e"
+          },
+          "encoder.joblib": {
+            "bytes_equal": false,
+            "size_d1": 3617,
+            "size_d2": 3617,
+            "sha256_d1": "a55595067f5c3a9a",
+            "sha256_d2": "597fe307beed1cd3"
+          },
+          "feature_schema.json": {
+            "bytes_equal": true,
+            "size_d1": 4427,
+            "size_d2": 4427,
+            "sha256_d1": "0a74f837787c2f3f",
+            "sha256_d2": "0a74f837787c2f3f"
+          },
+          "model.json": {
+            "bytes_equal": true,
+            "size_d1": 363149,
+            "size_d2": 363149,
+            "sha256_d1": "1d9bf64e43e64051",
+            "sha256_d2": "1d9bf64e43e64051"
+          },
+          "rarity_state.joblib": {
+            "bytes_equal": true,
+            "size_d1": 605,
+            "size_d2": 605,
+            "sha256_d1": "e2a06c9fd802d751",
+            "sha256_d2": "e2a06c9fd802d751"
+          }
+        }
+      },
+      "value_deltas": {
+        "metrics": {
+          "n_training_rows": {
+            "r3": 1374.0,
+            "r4": 1374.0,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "prevalence": {
+            "r3": 0.10698689956331878,
+            "r4": 0.10698689956331878,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "precision_at_threshold": {
+            "r3": 0.8670886075949367,
+            "r4": 0.8670886075949367,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "recall_at_threshold": {
+            "r3": 0.9319727891156463,
+            "r4": 0.9319727891156463,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "f1_at_threshold": {
+            "r3": 0.898360655737705,
+            "r4": 0.898360655737705,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "roc_auc": {
+            "r3": 0.9913815566976587,
+            "r4": 0.9913815566976587,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "pr_auc": {
+            "r3": 0.922345860890333,
+            "r4": 0.922345860890333,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "brier_uncalibrated": {
+            "r3": 0.02030804567039013,
+            "r4": 0.02030804567039013,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "brier_calibrated": {
+            "r3": 0.017419233918190002,
+            "r4": 0.017419233918190002,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          },
+          "low_prob_cutoff": {
+            "r3": 0.05,
+            "r4": 0.05,
+            "delta": 0.0,
+            "equal_within_1e-9": true
+          }
+        }
+      },
+      "exception": null,
+      "overall_pass": true
+    }
+  }
+}

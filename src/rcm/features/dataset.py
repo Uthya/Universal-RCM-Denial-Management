@@ -113,12 +113,34 @@ async def load_training_corpus(
     where_sql = " AND ".join(where_clauses)
     limit_sql = f"LIMIT {int(limit)}" if limit else ""
 
+    # CR-071: Strategy A1 ("any denial wins") — denial propagated from a
+    # freq=7 replacement back to its freq=1 original via (claim_number,
+    # payer_id). Read-only; computed at query time from live claims +
+    # remittance_claims. mv_claim_labels itself is unchanged. payer isolation
+    # preserved via `IS NOT DISTINCT FROM` (NULL/NULL is a match, NULL/non-NULL
+    # is not). Affects ~1,928 mv rows on the current corpus; per the
+    # CR-071 label-semantics validation report.
     base_sql = text(f"""
+        WITH descendant_denial AS (
+            SELECT DISTINCT r.claim_number, r.payer_id
+            FROM claims r
+            JOIN remittance_claims rc
+                 ON rc.claim_id = r.id AND rc.claim_status_code = '4'
+            WHERE r.frequency_code = '7'
+              AND r.deleted_at IS NULL
+        )
         SELECT
             {_CLAIM_COLUMNS},
-            mv.denied
+            CASE
+                WHEN mv.denied = 1 THEN 1                -- own denial wins
+                WHEN dd.claim_number IS NOT NULL THEN 1  -- propagated from descendant
+                ELSE 0
+            END AS denied
         FROM mv_claim_labels mv
         JOIN claims c        ON c.id = mv.claim_id
+        LEFT JOIN descendant_denial dd
+             ON dd.claim_number = c.claim_number
+            AND dd.payer_id IS NOT DISTINCT FROM c.payer_id
         LEFT JOIN payers py  ON py.id = c.payer_id
         LEFT JOIN patients pt ON pt.id = c.patient_id
         LEFT JOIN providers bpr ON bpr.id = c.billing_provider_id

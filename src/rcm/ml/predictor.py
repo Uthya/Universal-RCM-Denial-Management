@@ -104,6 +104,32 @@ class HealthcarePredictor:
         X = await self.builder.transform(session, df)
         validate_feature_frame(X, self.bundle.service_variant, self.bundle.claim_subtype)
 
+        # CR-076 #3: hard-fail if predict-time column count/order/names drift
+        # from the trained booster. Silent positional inference is forbidden
+        # (lesson M1 — XGBoost mis-attributes SHAP on column drift).
+        booster_names = self.bundle.booster.feature_names
+        if booster_names:
+            if len(booster_names) != X.shape[1]:
+                raise FeatureSchemaError(
+                    f"predict-time feature count {X.shape[1]} does not match "
+                    f"trained booster's {len(booster_names)}"
+                )
+            if list(booster_names) != list(X.columns):
+                only_b = set(booster_names) - set(X.columns)
+                only_x = set(X.columns) - set(booster_names)
+                if not only_b and not only_x:
+                    raise FeatureSchemaError(
+                        "predict-time feature ORDER drifted from training "
+                        "schema — XGBoost would mis-attribute SHAP. First 3 "
+                        f"train: {list(booster_names)[:3]}; first 3 X: "
+                        f"{list(X.columns)[:3]}"
+                    )
+                raise FeatureSchemaError(
+                    f"predict-time feature names diverge — "
+                    f"only_in_train={sorted(only_b)[:5]} "
+                    f"only_in_X={sorted(only_x)[:5]}"
+                )
+
         # XGBoost predict via DMatrix
         dmat = xgb.DMatrix(X.to_numpy(), feature_names=list(X.columns))
         raw_scores = np.asarray(self.bundle.booster.predict(dmat)).ravel()
@@ -129,7 +155,12 @@ class HealthcarePredictor:
             cal = float(calibrated[i])
             label = int(cal >= self.bundle.decision_threshold)
             risk = self._risk_level(cal)
-            top = self._top_risk_factors(X.columns, shap_matrix[i] if shap_matrix is not None else None)
+            # CR-078: fetch top-15 by |SHAP| so the dispatcher has enough
+            # distinct factors left after positive-impact filtering + bucket
+            # dedupe to surface up to 5 business-language reasons.
+            top = self._top_risk_factors(
+                X.columns, shap_matrix[i] if shap_matrix is not None else None, k=15,
+            )
             unseen = self._compute_unseen(row)
             avail = float(X.iloc[i].get("reference_data_completeness", 0.0))
             input_complete = float((X.iloc[i].fillna(0).abs() > 1e-9).mean())

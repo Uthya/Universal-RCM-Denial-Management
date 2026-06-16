@@ -1,0 +1,180 @@
+{
+  "captured_at": "2026-06-16T08:08:36.309201+00:00",
+  "source": "production artifacts/featurebuilder/<variant>/feature_schema.json",
+  "variants": {
+    "837P_healthcare": {
+      "service_variant": "837P",
+      "claim_subtype": "healthcare",
+      "status": "ok",
+      "model_version": "v1.fb.20260616T060216.837P_healthcare",
+      "calibrator_version": "isotonic_v1",
+      "feature_engineering_version": "v1.0.0",
+      "decision_threshold": 0.02,
+      "training_size": 35222,
+      "training_prevalence": 0.21123161660325931,
+      "n_feature_columns": 114,
+      "split_sizes": {
+        "n_training_rows": 35222,
+        "n_validation_rows": 7548,
+        "n_held_out_rows": 7548
+      },
+      "slices": {
+        "oof": {
+          "n": 35222,
+          "prevalence": 0.21123161660325931,
+          "roc_auc": 0.9961180045794331,
+          "pr_auc": 0.9906085606866949,
+          "f1": 0.9343251319219277,
+          "precision": 0.8864760525998311,
+          "recall": 0.9876344086021506,
+          "accuracy": 0.9706717392538754,
+          "brier_calibrated": 0.00505805341526866,
+          "brier_uncalibrated": 0.005351115949451923,
+          "positive_rate": 0.2353358696269377
+        },
+        "validation": {
+          "n": 7548,
+          "prevalence": 0.2113142554319025,
+          "roc_auc": 0.9993835725724023,
+          "pr_auc": 0.9978188506800052,
+          "f1": 0.9387392719739568,
+          "precision": 0.8890134529147982,
+          "recall": 0.9943573667711598,
+          "accuracy": 0.9725755166931638,
+          "brier_calibrated": 0.0029323508497327566,
+          "brier_uncalibrated": 0.003684262977913022,
+          "positive_rate": 0.2363540010598834
+        },
+        "held_out": {
+          "n": 7548,
+          "prevalence": 0.21118177000529942,
+          "roc_auc": 0.9979117399013516,
+          "pr_auc": 0.9926163865483629,
+          "f1": 0.9264273101824603,
+          "precision": 0.8725055432372506,
+          "recall": 0.9874529485570891,
+          "accuracy": 0.9668786433492316,
+          "brier_calibrated": 0.005055791232734919,
+          "brier_uncalibrated": 0.00512760691344738,
+          "positive_rate": 0.2390037095919449
+        }
+      }
+    },
+    "837D_dental": {
+      "service_variant": "837D",
+      "claim_subtype": "dental",
+      "status": "ok",
+      "model_version": "v1.fb.20260616T060218.837D_dental",
+      "calibrator_version": "isotonic_v1",
+      "feature_engineering_version": "v1.0.0",
+      "decision_threshold": 0.17,
+      "training_size": 1070,
+      "training_prevalence": 0.3719626168224299,
+      "n_feature_columns": 116,
+      "split_sizes": {
+        "n_training_rows": 1070,
+        "n_validation_rows": 229,
+        "n_held_out_rows": 230
+      },
+      "slices": {
+        "oof": {
+          "n": 1070,
+          "prevalence": 0.3719626168224299,
+          "roc_auc": 0.9653344849246231,
+          "pr_auc": 0.9329216171263388,
+          "f1": 0.9346485819975339,
+          "precision": 0.9176755447941889,
+          "recall": 0.9522613065326633,
+          "accuracy": 0.9504672897196261,
+          "brier_calibrated": 0.04511637985706329,
+          "brier_uncalibrated": 0.044396743178367615,
+          "positive_rate": 0.385981308411215
+        },
+        "validation": {
+          "n": 229,
+          "prevalence": 0.37117903930131,
+          "roc_auc": 0.9875,
+          "pr_auc": 0.9708884778158856,
+          "f1": 0.9265536723163842,
+          "precision": 0.8913043478260869,
+          "recall": 0.9647058823529412,
+          "accuracy": 0.9432314410480349,
+          "brier_calibrated": 0.03706226497888565,
+          "brier_uncalibrated": 0.04287553206086159,
+          "positive_rate": 0.4017467248908297
+        },
+        "held_out": {
+          "n": 230,
+          "prevalence": 0.3739130434782609,
+          "roc_auc": 0.9309593023255813,
+          "pr_auc": 0.9088721566014206,
+          "f1": 0.8771929824561403,
+          "precision": 0.8823529411764706,
+          "recall": 0.872093023255814,
+          "accuracy": 0.908695652173913,
+          "brier_calibrated": 0.08227778226137161,
+          "brier_uncalibrated": 0.0794452503323555,
+          "positive_rate": 0.3695652173913043
+        }
+      }
+    },
+    "837I_home_care": {
+      "service_variant": "837I",
+      "claim_subtype": "home_care",
+      "status": "ok",
+      "model_version": "v1.fb.20260616T060219.837I_home_care",
+      "calibrator_version": "isotonic_v1",
+      "feature_engineering_version": "v1.0.0",
+      "decision_threshold": 0.15000000000000002,
+      "training_size": 530,
+      "training_prevalence": 0.3754716981132076,
+      "n_feature_columns": 119,
+      "split_sizes": {
+        "n_training_rows": 530,
+        "n_validation_rows": 114,
+        "n_held_out_rows": 114
+      },
+      "slices": {
+        "oof": {
+          "n": 530,
+          "prevalence": 0.3754716981132076,
+          "roc_auc": 0.9581973310662072,
+          "pr_auc": 0.9363425505809576,
+          "f1": 0.8904761904761904,
+          "precision": 0.8461538461538461,
+          "recall": 0.9396984924623115,
+          "accuracy": 0.9132075471698113,
+          "brier_calibrated": 0.04703860729932785,
+          "brier_uncalibrated": 0.04553147777915001,
+          "positive_rate": 0.4169811320754717
+        },
+        "validation": {
+          "n": 114,
+          "prevalence": 0.37719298245614036,
+          "roc_auc": 0.9896822797248608,
+          "pr_auc": 0.9711553664984502,
+          "f1": 0.9333333333333333,
+          "precision": 0.8936170212765957,
+          "recall": 0.9767441860465116,
+          "accuracy": 0.9473684210526315,
+          "brier_calibrated": 0.03004741668701172,
+          "brier_uncalibrated": 0.033528923988342285,
+          "positive_rate": 0.41228070175438597
+        },
+        "held_out": {
+          "n": 114,
+          "prevalence": 0.37719298245614036,
+          "roc_auc": 0.954471012119227,
+          "pr_auc": 0.9251775943312286,
+          "f1": 0.8913043478260869,
+          "precision": 0.8367346938775511,
+          "recall": 0.9534883720930233,
+          "accuracy": 0.9122807017543859,
+          "brier_calibrated": 0.05710384249687195,
+          "brier_uncalibrated": 0.05759267136454582,
+          "positive_rate": 0.4298245614035088
+        }
+      }
+    }
+  }
+}

@@ -34,6 +34,7 @@ from datetime import date, datetime, timezone
 from typing import Any
 
 from sqlalchemy import insert, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -111,9 +112,23 @@ async def save_parse_context(
         await session.flush()
     except IntegrityError:
         await session.rollback()
+        # Prefer a LIVE row (deleted_at IS NULL) — the partial unique index
+        # only protects live rows, and a soft-deleted row may still hold the
+        # same content_hash from a prior aborted/replaced ingest. Returning
+        # the live row keeps the UI pointing at the file with actual data.
         existing = (await session.execute(
-            select(EdiFile.id).where(EdiFile.content_hash == content_hash)
+            select(EdiFile.id).where(
+                EdiFile.content_hash == content_hash,
+                EdiFile.deleted_at.is_(None),
+            ).order_by(EdiFile.id.desc()).limit(1)
         )).scalar()
+        if existing is None:
+            # No live row — fall back to whatever exists (caller will get the
+            # soft-deleted row's data, which is still better than crashing).
+            existing = (await session.execute(
+                select(EdiFile.id).where(EdiFile.content_hash == content_hash)
+                .order_by(EdiFile.id.desc()).limit(1)
+            )).scalar()
         raise DuplicateFileError(content_hash, existing or 0) from None
 
     # ---- 3. claims: bulk INSERT...RETURNING ------------------------------
@@ -138,6 +153,12 @@ async def save_parse_context(
     await _bulk_insert_adjustments(session, ctx, remit_id_by_index)
     await _bulk_insert_remarks(session, ctx, remit_id_by_index)
 
+    # ---- 5.5. propagate CLP02 → claims.claim_status ----------------------
+    # Scoped to the claims this 835 actually references (CR-052). Skipped on
+    # 837-only uploads (no remittances).
+    if ctx.remittances:
+        await _propagate_remit_status_to_claims(session, edi_file.id)
+
     # ---- 6. raw_segments (always — incl. validator_dropped rows) ---------
     await _bulk_insert_raw_segments(
         session, ctx, edi_file.id, claim_id_by_index, remit_id_by_index,
@@ -155,6 +176,11 @@ async def save_parse_context(
 # =============================================================================
 
 async def _bulk_upsert_payers(session: AsyncSession, ctx: ParseContext) -> dict[str, int]:
+    # CR-069: concurrency-safe upsert. INSERT ... ON CONFLICT DO NOTHING on
+    # the existing payers.canonical_name UNIQUE constraint, then SELECT to
+    # retrieve every requested id (both newly-inserted and pre-existing). The
+    # prior check-then-insert pattern raised IntegrityError when two
+    # concurrent uploads of files sharing the same payer raced on cold-start.
     by_name: dict[str, Any] = {}
     for p in ctx.payers:
         if p.canonical_name and p.canonical_name not in by_name:
@@ -162,31 +188,28 @@ async def _bulk_upsert_payers(session: AsyncSession, ctx: ParseContext) -> dict[
     if not by_name:
         return {}
 
-    existing = (await session.execute(
+    dicts = [
+        {
+            "canonical_name": n,
+            "sender_id": r.sender_id,
+            "receiver_id": r.receiver_id,
+            "payer_taxonomy": r.payer_taxonomy,
+        }
+        for n, r in by_name.items()
+    ]
+    stmt = pg_insert(Payer).values(dicts).on_conflict_do_nothing(
+        index_elements=["canonical_name"],
+    )
+    await session.execute(stmt)
+
+    rows = (await session.execute(
         select(Payer.id, Payer.canonical_name).where(Payer.canonical_name.in_(by_name))
     )).all()
-    out = {n: i for i, n in existing}
-
-    missing = [(n, r) for n, r in by_name.items() if n not in out]
-    if missing:
-        dicts = [
-            {
-                "canonical_name": n,
-                "sender_id": r.sender_id,
-                "receiver_id": r.receiver_id,
-                "payer_taxonomy": r.payer_taxonomy,
-            }
-            for n, r in missing
-        ]
-        rows = await _bulk_insert_returning(
-            session, Payer, dicts, [Payer.id, Payer.canonical_name],
-        )
-        for cid, name in rows:
-            out[name] = cid
-    return out
+    return {n: i for i, n in rows}
 
 
 async def _bulk_upsert_patients(session: AsyncSession, ctx: ParseContext) -> dict[str, int]:
+    # CR-069: concurrency-safe upsert against patients.member_id UNIQUE.
     # Merge multiple PatientRec instances for the same member_id (e.g., one
     # from NM1*IL self-claim + one from NM1*QC), keeping the last seen.
     by_member: dict[str, Any] = {}
@@ -198,32 +221,32 @@ async def _bulk_upsert_patients(session: AsyncSession, ctx: ParseContext) -> dic
     if not by_member:
         return {}
 
-    existing = (await session.execute(
+    dicts = [
+        {
+            "member_id": m,
+            "first_name": r.first_name,
+            "last_name": r.last_name,
+            "date_of_birth": r.date_of_birth,
+            "gender": r.gender,
+        }
+        for m, r in by_member.items()
+    ]
+    stmt = pg_insert(Patient).values(dicts).on_conflict_do_nothing(
+        index_elements=["member_id"],
+    )
+    await session.execute(stmt)
+
+    rows = (await session.execute(
         select(Patient.id, Patient.member_id).where(Patient.member_id.in_(by_member))
     )).all()
-    out = {m: i for i, m in existing}
-
-    missing = [(m, r) for m, r in by_member.items() if m not in out]
-    if missing:
-        dicts = [
-            {
-                "member_id": m,
-                "first_name": r.first_name,
-                "last_name": r.last_name,
-                "date_of_birth": r.date_of_birth,
-                "gender": r.gender,
-            }
-            for m, r in missing
-        ]
-        rows = await _bulk_insert_returning(
-            session, Patient, dicts, [Patient.id, Patient.member_id],
-        )
-        for pid, member in rows:
-            out[member] = pid
-    return out
+    return {m: i for i, m in rows}
 
 
 async def _bulk_upsert_providers(session: AsyncSession, ctx: ParseContext) -> dict[str, int]:
+    # CR-069: concurrency-safe upsert against providers.npi UNIQUE. This was
+    # the highest-contention path in the pre-verification: every LR1K_D file
+    # shared the same billing NPI 1326242504, producing the observed
+    # UniqueViolation cascade under 8-wide concurrency.
     by_npi: dict[str, Any] = {}
     for p in ctx.providers:
         if not p.npi:
@@ -234,31 +257,27 @@ async def _bulk_upsert_providers(session: AsyncSession, ctx: ParseContext) -> di
     if not by_npi:
         return {}
 
-    existing = (await session.execute(
+    dicts = [
+        {
+            "npi": n,
+            "provider_type": r.provider_type,
+            "organization_name": r.organization_name,
+            "last_name": r.last_name,
+            "first_name": r.first_name,
+            "taxonomy_code": r.taxonomy_code,
+            "state": r.state,
+        }
+        for n, r in by_npi.items()
+    ]
+    stmt = pg_insert(Provider).values(dicts).on_conflict_do_nothing(
+        index_elements=["npi"],
+    )
+    await session.execute(stmt)
+
+    rows = (await session.execute(
         select(Provider.id, Provider.npi).where(Provider.npi.in_(by_npi))
     )).all()
-    out = {n: i for i, n in existing}
-
-    missing = [(n, r) for n, r in by_npi.items() if n not in out]
-    if missing:
-        dicts = [
-            {
-                "npi": n,
-                "provider_type": r.provider_type,
-                "organization_name": r.organization_name,
-                "last_name": r.last_name,
-                "first_name": r.first_name,
-                "taxonomy_code": r.taxonomy_code,
-                "state": r.state,
-            }
-            for n, r in missing
-        ]
-        rows = await _bulk_insert_returning(
-            session, Provider, dicts, [Provider.id, Provider.npi],
-        )
-        for pid, npi in rows:
-            out[npi] = pid
-    return out
+    return {n: i for i, n in rows}
 
 
 async def _bulk_insert_subscribers(
@@ -756,3 +775,60 @@ def _build_summary(ctx: ParseContext) -> dict[str, Any]:
         "raw_segment_count": len(ctx.raw_segments),
         "parse_event_count": len(ctx.parse_events),
     }
+
+
+async def _propagate_remit_status_to_claims(
+    session: AsyncSession, edi_file_id: int,
+) -> None:
+    """After 835 ingest, recompute `claims.claim_status` for ONLY the claims
+    this 835 file actually references, and only write rows whose status
+    actually changes.
+
+    Business rules unchanged from v1:
+      * any remit with claim_status_code = '4'                  → denied
+      * else any remit with paid_amount > 0 AND < billed_amount → partially_paid
+      * else any remit with paid_amount >= billed_amount > 0    → paid
+      * otherwise (no informative remit)                        → leave as-is
+
+    CR-052 performance fix: previously the UPDATE filtered only on
+    "claim is adjudicated" and "claim is alive" — which meant *every* 835
+    upload rewrote *every* adjudicated claim in the entire database (12k
+    rows per file × thousands of files = tens of millions of wasted row
+    touches, dead-tuple churn, and (pre-CR-051) audit_log fanout).
+    The new query scopes to the current file's claims via the
+    `remittance_claims.edi_file_id = :file_id` filter, and the
+    `IS DISTINCT FROM` guard skips no-op writes entirely.
+    Final `claim_status` values are unchanged.
+    """
+    from sqlalchemy import text
+
+    await session.execute(text("""
+        UPDATE claims c
+        SET claim_status = computed.new_status
+        FROM (
+            SELECT rc.claim_id AS id,
+                   CASE
+                       WHEN bool_or(rc.claim_status_code = '4')
+                            THEN 'denied'::claim_status
+                       WHEN bool_or(rc.paid_amount > 0
+                                    AND rc.paid_amount < rc.billed_amount)
+                            THEN 'partially_paid'::claim_status
+                       WHEN bool_or(rc.paid_amount > 0
+                                    AND rc.paid_amount >= rc.billed_amount)
+                            THEN 'paid'::claim_status
+                       ELSE NULL::claim_status
+                   END AS new_status
+            FROM remittance_claims rc
+            WHERE rc.claim_id IN (
+                SELECT DISTINCT claim_id
+                FROM remittance_claims
+                WHERE edi_file_id = :file_id
+                  AND claim_id IS NOT NULL
+            )
+            GROUP BY rc.claim_id
+        ) AS computed
+        WHERE c.id = computed.id
+          AND c.deleted_at IS NULL
+          AND computed.new_status IS NOT NULL
+          AND c.claim_status IS DISTINCT FROM computed.new_status
+    """), {"file_id": edi_file_id})
