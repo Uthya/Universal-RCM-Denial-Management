@@ -125,6 +125,46 @@ def _any_fb_artifact_exists() -> bool:
     return False
 
 
+def _read_bundle_schema(artifact_dir: Path) -> dict | None:
+    """Lightweight peek at a bundle's ``feature_schema.json`` without loading
+    the booster. Used by the reload endpoint to report what's on disk."""
+    schema_path = artifact_dir / "feature_schema.json"
+    if not schema_path.is_file():
+        return None
+    try:
+        import json
+        return json.loads(schema_path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+
+
+def _inventory_available_bundles() -> list[dict]:
+    """Enumerate every (variant, subtype) FB artifact directory present and
+    return its model_version / threshold / FE version. Read-only; no booster
+    load. Order matches ``_FB_VARIANT_KEYS`` so the response is stable."""
+    out: list[dict] = []
+    for (variant, subtype), key in _FB_VARIANT_KEYS.items():
+        artifact_dir = _FB_ARTIFACT_ROOT / key
+        if not artifact_dir.is_dir():
+            continue
+        schema = _read_bundle_schema(artifact_dir) or {}
+        out.append({
+            "service_variant": variant,
+            "claim_subtype":   subtype,
+            "artifact_dir":    str(artifact_dir),
+            "model_version":   schema.get("model_version"),
+            "feature_engineering_version": schema.get("feature_engineering_version"),
+            "calibrator_version": schema.get("calibrator_version"),
+            "decision_threshold": (
+                float(schema["decision_threshold"])
+                if schema.get("decision_threshold") is not None else None
+            ),
+            "training_size":      schema.get("training_size"),
+            "training_prevalence":schema.get("training_prevalence"),
+        })
+    return out
+
+
 def _current_simple_model_version() -> str:
     """Used for shadow row tagging post-cutover."""
     try:
@@ -220,6 +260,10 @@ async def train_endpoint() -> TrainModelResponse:
     if not _fb_primary_enabled():
         return await _legacy_train_simple()
 
+    # CR-080: in-memory run handle. Not persisted (the history grouper
+    # reconstructs the group from training_timestamp proximity). Surfaced on
+    # the response so the immediate frontend refresh has a stable key.
+    training_run_id = f"run-{_uuid.uuid4().hex[:12]}"
     t0 = time.perf_counter()
     from rcm.ml.trainer import train_variant
 
@@ -344,6 +388,7 @@ async def train_endpoint() -> TrainModelResponse:
             held_out_metrics=_to_train_metrics(primary.get("held_out_block")),
             decision_threshold=primary.get("decision_threshold"),
         ),
+        training_run_id=training_run_id,
     )
 
 
@@ -464,6 +509,39 @@ async def _persist_training_run(result: dict, duration: float) -> None:
             await session.commit()
     except Exception:
         logger.exception("Failed to persist training run (non-fatal)")
+
+
+# ---------------------------------------------------------------------------
+# Reload bundles — CR-081 Issue A
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/reload-bundles",
+    summary="Invalidate the per-variant FB predictor cache",
+    description=(
+        "Clears the in-process FB predictor cache so the next predict call "
+        "lazy-loads bundles fresh from `artifacts/featurebuilder/`. Call "
+        "this after promoting tuned candidates with `cr079_promote.py --apply` "
+        "(or any other on-disk swap) so the running uvicorn picks up the new "
+        "weights without a restart."
+    ),
+)
+async def reload_bundles() -> dict:
+    """CR-081 Issue A — clears _FB_PREDICTOR_CACHE and returns the on-disk
+    bundle inventory the next predict will load from."""
+    cleared = len(_FB_PREDICTOR_CACHE)
+    _FB_PREDICTOR_CACHE.clear()
+    available = _inventory_available_bundles()
+    logger.info(
+        "reload-bundles: cleared %d cached predictor(s); %d bundle(s) on disk",
+        cleared, len(available),
+    )
+    return {
+        "status":               "ok",
+        "cleared_predictors":   cleared,
+        "available_bundles":    available,
+        "fb_primary_enabled":   _fb_primary_enabled(),
+    }
 
 
 # ---------------------------------------------------------------------------

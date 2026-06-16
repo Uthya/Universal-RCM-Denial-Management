@@ -745,6 +745,108 @@ function TrainModelCard({ onTrainingComplete }) {
   );
 }
 
+const _VARIANT_ORDER = [
+  { key: 'healthcare', label: 'Healthcare' },
+  { key: 'dental',     label: 'Dental' },
+  { key: 'home_care',  label: 'Home Care' },
+];
+
+// Strip implementation tags (fb, tuned, simple) and timestamps from a model
+// version string so the UI chip stays compact. The backend keeps the full
+// `model_version_group` value for debugging; we just shorten the display.
+//   "v1.fb.20260616T104216"                            -> "v1"
+//   "v1.fb.tuned.20260616T090800"                      -> "v1"
+//   "v1.fb.20260616T060216, v1.fb.20260616T060218"     -> "v1"
+//   "v2.1.fb.<ts>"                                     -> "v2.1"
+function _shortModelVersion(group) {
+  if (!group) return null;
+  const first = String(group).split(',')[0].trim();
+  const m = first.match(/^v\d+(?:\.\d+)*/);
+  return m ? m[0] : first;
+}
+
+function VariantBlock({ label, variant, pct }) {
+  if (!variant) {
+    return (
+      <div className="rounded-md border border-gray-200 bg-white px-2.5 py-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+          {label}
+        </p>
+        <p className="text-xs text-gray-400 mt-1">Not trained in this run</p>
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-md border border-gray-200 bg-white px-2.5 py-2">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-700">
+        {label}
+      </p>
+      <dl className="grid grid-cols-2 gap-x-2 gap-y-0.5 mt-1 text-[11px]">
+        <div>
+          <dt className="text-gray-500">Claims</dt>
+          <dd className="font-mono text-gray-900">
+            {(variant.total_claims_used || 0).toLocaleString()}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-gray-500">AUC</dt>
+          <dd className="font-mono text-gray-900">{pct(variant.roc_auc)}</dd>
+        </div>
+        <div>
+          <dt className="text-gray-500">F1</dt>
+          <dd className="font-mono text-gray-900">{pct(variant.f1_score)}</dd>
+        </div>
+        <div>
+          <dt className="text-gray-500">Prec</dt>
+          <dd className="font-mono text-gray-900">{pct(variant.precision)}</dd>
+        </div>
+        <div className="col-span-2">
+          <dt className="text-gray-500">Recall</dt>
+          <dd className="font-mono text-gray-900">{pct(variant.recall)}</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
+function TrainingRunCard({ run, fmtTimestamp, pct }) {
+  const duration =
+    typeof run.training_time_seconds === 'number'
+      ? `${run.training_time_seconds.toFixed(2)}s`
+      : '—';
+  return (
+    <li className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-gray-900">
+          {fmtTimestamp(run.started_at)}
+        </p>
+        {run.model_version_group && (
+          <span
+            className="text-[11px] font-mono text-indigo-700 bg-indigo-50 border border-indigo-100 rounded px-1.5 py-0.5 truncate max-w-[55%]"
+            title={run.model_version_group}
+          >
+            {_shortModelVersion(run.model_version_group)}
+          </span>
+        )}
+      </div>
+      <p className="text-xs text-gray-500 mt-0.5">
+        {run.variant_count} variant{run.variant_count === 1 ? '' : 's'} trained · {duration}
+        {run.status && run.status !== 'success' ? ` · ${run.status}` : ''}
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+        {_VARIANT_ORDER.map(({ key, label }) => (
+          <VariantBlock
+            key={key}
+            label={label}
+            variant={run.variants?.[key]}
+            pct={pct}
+          />
+        ))}
+      </div>
+    </li>
+  );
+}
+
 function TrainingHistoryCard({ refreshKey }) {
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
@@ -816,58 +918,7 @@ function TrainingHistoryCard({ refreshKey }) {
         <>
           <ul className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
             {items.map((run) => (
-              <li
-                key={run.training_id}
-                className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2.5"
-              >
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold text-gray-900">
-                    {fmtTimestamp(run.training_timestamp)}
-                  </p>
-                  {run.model_version && (
-                    <span className="text-[11px] font-mono text-indigo-700 bg-indigo-50 border border-indigo-100 rounded px-1.5 py-0.5">
-                      {run.model_version}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {run.total_claims_used.toLocaleString()} claims ·{' '}
-                  {run.training_samples.toLocaleString()} train /{' '}
-                  {run.test_samples.toLocaleString()} test
-                </p>
-                <dl className="grid grid-cols-4 gap-x-2 gap-y-0.5 mt-2 text-xs">
-                  <div>
-                    <dt className="text-gray-500">Acc</dt>
-                    <dd className="font-mono text-gray-900">{pct(run.accuracy)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-gray-500">F1</dt>
-                    <dd className="font-mono text-gray-900">{pct(run.f1_score)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-gray-500">Prec</dt>
-                    <dd className="font-mono text-gray-900">{pct(run.precision)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-gray-500">Rec</dt>
-                    <dd className="font-mono text-gray-900">{pct(run.recall)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-gray-500">AUC</dt>
-                    <dd className="font-mono text-gray-900">{pct(run.roc_auc)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-gray-500">Denial</dt>
-                    <dd className="font-mono text-gray-900">{pct(run.denial_rate)}</dd>
-                  </div>
-                  <div className="col-span-2">
-                    <dt className="text-gray-500">Time</dt>
-                    <dd className="font-mono text-gray-900">
-                      {run.training_time_seconds?.toFixed(2)}s
-                    </dd>
-                  </div>
-                </dl>
-              </li>
+              <TrainingRunCard key={run.training_run_id} run={run} fmtTimestamp={fmtTimestamp} pct={pct} />
             ))}
           </ul>
           {total > items.length && (

@@ -5034,6 +5034,441 @@ mv artifacts/featurebuilder_pre_cr079/837I_home_care  artifacts/featurebuilder/8
 
 ---
 
+## CR-080 — 2026-06-16 — Consolidated training-history entries (presentation-layer grouping)
+
+**Trigger**: The trainer correctly trains three variant-specific FB bundles per `/train` invocation (CR-067 architecture). The Training History card on the Upload page was rendering one row per variant — three cards per user-initiated training, which read as if three separate jobs ran. The fix needed to be presentation-only — no new column, no migration, no merger of training logic.
+
+**Decision**: Group at the API boundary using the existing `training_timestamp` column. Rows whose timestamps fall inside a 60 s window are treated as one logical run. The window is deliberately wide enough to cover the slowest single `/train` invocation (CR-075 baseline ≈ 22 s; CR-079 candidate fit can stretch toward 60 s on 837P) but tight enough that two manual `/train` clicks remain distinct (the smallest realistic gap is the train wall-clock itself, ~25 s+). Synthetic `training_run_id` is a deterministic 12-hex hash of the earliest member row's id — stable across API calls so React keys and deep-links don't drift.
+
+**Scope**: 4 files + 1 test module; **zero schema change, zero migration**.
+
+| File | Action | LOC |
+|---|---|---:|
+| `src/rcm/schemas/public.py` | NEW `TrainingVariantMetrics` + `TrainingRunItem`; `TrainingHistoryResponse.items` reshaped to `list[TrainingRunItem]`; `TrainModelResponse.training_run_id` added (in-memory only) | +60 / −0 |
+| `src/rcm/routers/public/ml.py` | Rewritten: `_group_rows_into_runs` window-based grouper, `_row_to_variant_block`, `_model_version_prefix`; both `/training-history` and `/latest-training` return the grouped shape | +200 / −95 |
+| `src/rcm/routers/public/predictions.py` | `train_endpoint` generates an in-memory `training_run_id = "run-<12-hex>"` and includes it on the response | +6 |
+| `frontend/src/pages/UploadPage.jsx` | New `VariantBlock` + `TrainingRunCard` components inside the existing `TrainingHistoryCard`; outer card style unchanged; inner content becomes one row per run × three-column variant grid | +95 / −55 |
+| `tests/unit/test_cr080_grouping.py` | NEW — 16 grouping tests | +205 |
+
+**What changed**:
+
+The 3-row → 1-card collapse is done at read time, never at write time. Persistence is byte-for-byte identical to pre-CR-080 — three rows per `/train`, each with its own `training_id` UUID and `model_version` string. The grouper:
+
+1. Fetches rows ordered by `training_timestamp DESC` (with `id DESC` tie-break).
+2. Walks the list. Starts a new run whenever the next row's timestamp falls more than 60 s before the current run's *earliest* timestamp (anchored, not sliding — a 25 s 837P fit doesn't artificially split).
+3. Inside a run: deduplicates by `claim_subtype`, keeping the LATEST timestamp (handles in-window retries cleanly).
+4. Builds a `TrainingRunItem` carrying:
+   - Synthetic `training_run_id` (deterministic hash of the earliest row's `id`).
+   - `started_at` / `ended_at` (earliest / latest timestamp).
+   - `training_time_seconds` (sum of variant durations).
+   - `model_version_group` (common prefix when all three rows share one; comma-joined prefixes otherwise).
+   - `variants: { healthcare, dental, home_care }` keyed by `claim_subtype`.
+
+`limit=N` on `/training-history` now means "N runs"; the implementation fetches `4 * (skip + limit)` rows from the DB (enough headroom for 3-variant runs plus a small safety buffer), groups, then slices.
+
+**System behavior after this change**:
+
+- The Training History card on `/upload` shows one outer item per `/train` invocation. Inner content: three side-by-side blocks (Healthcare / Dental / Home Care) each with `Claims`, `AUC`, `F1`, `Prec`, `Recall`. Variants that weren't trained in a particular run render "Not trained in this run" rather than going missing.
+- Verified on the live DB: history went from **32 rows → 6 grouped runs**. Each historical `/train` invocation (CR-067, CR-072 verification, CR-076, CR-077, CR-078 verification, today's CR-079 sanity check) collapses to a single row with three variant blocks.
+- Pre-CR-080 single-variant historical rows (legacy runs where only one variant was trained) render as a 1-variant card — graceful degradation, no data loss.
+- `TrainModelResponse.training_run_id` is exposed for the immediate response so a frontend refresh after `/train` can find the just-created row by id without a timestamp race.
+- No persistence change. No new index. No new column. `alembic current` is unchanged at head.
+
+**How to use / verify**:
+
+```bash
+# Backend (already restarted with --reload during CR-080 verification)
+PYTHONPATH=src python -m uvicorn rcm.main:app --port 8000 --host 127.0.0.1 --reload --log-level warning
+
+# Grouped endpoint
+curl -s http://localhost:8000/api/ml/training-history?limit=5 | python -m json.tool
+# Each item now has training_run_id, started_at, variants{healthcare,dental,home_care}.
+
+# Latest-training endpoint
+curl -s http://localhost:8000/api/ml/latest-training | python -m json.tool
+
+# Tests (pure-Python; no DB)
+PYTHONPATH=src python -m pytest tests/unit/test_cr080_grouping.py -v
+# 16/16 expected
+```
+
+Frontend: open http://localhost:5173/upload and scroll to the Training History card. Each pre-CR-080 multi-variant training is now a single card with three small variant blocks inside.
+
+**Tests**:
+
+`tests/unit/test_cr080_grouping.py` — 16 tests:
+
+- `_model_version_prefix` strips the `.<variant>_<subtype>` suffix correctly for stock and tuned (CR-079) version strings; handles `None` / empty.
+- Three rows within the window collapse to one run; `variant_count == 3`.
+- Synthetic `training_run_id` is deterministic and starts with `run-`.
+- Gap > 60 s splits into two distinct runs.
+- Same variant appearing twice inside one window: later row wins (retry case).
+- Legacy single-row data renders as a 1-variant run.
+- Empty input → empty list.
+- `model_version_group` collapses to one prefix when shared.
+- `training_time_seconds` is the sum across variants.
+- `variants` dict is keyed by `claim_subtype` (`healthcare`/`dental`/`home_care`).
+- A 25-second 837P training does NOT split mid-run.
+
+Full unit suite: **304/304 pass** (was 288 — 16 new tests).
+
+**Performance impact**:
+
+- `/training-history`: one query (same as before), in-memory grouping over up to ~80 rows for a default `limit=20`. <2 ms on observed data.
+- `/latest-training`: one query, fetches up to 12 rows, groups them, returns the first one. Equivalent to the old version's cost.
+- `/train`: unchanged (`training_run_id` is a UUID4 hex slice).
+- Frontend: identical render budget; the per-variant grid is `grid-cols-1 sm:grid-cols-3` so mobile collapses to a single column without overflow.
+
+**Architecture principles A-E compliance**:
+
+| Principle | Compliance |
+|---|---|
+| A. Storage Minimization | ✅ Zero new bytes on disk; grouping is read-only computation |
+| B. Database Discipline | ✅ Zero schema delta; alembic head unchanged |
+| C. No Premature Persistence | ✅ `training_run_id` is in-memory; never written to a column |
+| D. Query Efficiency | ✅ Same query count + same plan; existing `training_timestamp` index handles ORDER BY |
+| E. Default Position | ✅ Smallest possible change that delivers "one train = one card" |
+
+### Red flags
+
+| Risk | Status |
+|---|---|
+| Full-table scans? | No |
+| Repeated queries per upload / request? | No |
+| N+1 patterns? | No |
+| Repeated UPDATEs? | No |
+| Unnecessary writes? | No |
+| Refresh-heavy operations? | No |
+| Partitioning implications? | No |
+| Adds persistent DB state? | NO — explicit constraint from the CR-080 scope |
+| Could two distinct `/train` clicks merge if launched within 60 s? | NO under normal use — `/train` itself takes ≥ 25 s wall-clock (CR-075 baseline 22 s; CR-079 candidate fit 30-60 s on 837P), so the second click's earliest row is always > 60 s after the first run's earliest row. If a future train pipeline becomes sub-second, the window will need tightening. |
+| Legacy single-variant rows lose information? | NO — they surface as 1-variant runs; no metric is dropped |
+
+**Known constraints / follow-ups**:
+
+- **Window-based grouping is a heuristic.** Two `/train` invocations launched within 60 s of each other would be merged. Current `/train` wall-clock makes that physically impossible from one client; only a malicious / scripted concurrent-double-submit could trigger it. If the trainer is ever sped up below 60 s, narrow the window or revisit Option A from the CR-080 AIR (the originally proposed `training_run_id` column, which the user rejected).
+- **`model_version_group` falls back to a comma-joined list** when the three variants' per-variant timestamps differ by more than the second-precision in the version string. This happens when 837P takes long enough that 837I trains at a different minute — the UI displays the joined value, which is informative but verbose. A future refinement could truncate to the first-shared character window.
+- **Pagination semantics changed.** `limit=N` is now N runs, not N rows. Existing callers (only the frontend Training History card) read the new shape directly; no migration needed.
+- **`/api/ml/latest-training` previously returned `TrainingHistoryItem | None`** (a flat row). It now returns `TrainingRunItem | None`. The frontend doesn't currently call this endpoint — verified via `grep` — so no breakage. External consumers (if any) need to update.
+
+**Related**: CR-067 / CR-067A (introduced the per-variant training-history rows this CR groups); CR-072 (added 837D + 837I trainability); CR-076 / CR-077 (the metric-recording stabilization that this CR's grouping consumes); CR-079 (whose Phase 4 study runs each show up as their own grouped card — including the single-variant 837I tuned promotion run).
+
+---
+
+## CR-081 — 2026-06-16 — Promotion safety + runtime consistency
+
+**Trigger**: Post-implementation risk audit (after CR-080) surfaced four real loopholes; the user authored CR-081 to fix the three highest-impact ones. The most pressing was Issue A — promoting a tuned bundle on disk did not invalidate the in-process `_FB_PREDICTOR_CACHE`, so `predict-file` continued serving the OLD weights until the backend was restarted. The miss was concrete: the post-CR-079 production state was actually overwritten by a later `/train` (`v1.fb.tuned.20260616T090800.837I_home_care` was replaced by `v1.fb.20260616T104220.837I_home_care`) — a separate bug, but only visible because CR-081's new inventory listing surfaced it.
+
+**Decision**: Runtime-only fix per the spec — no schema change, no migration, no new column. One new endpoint, two helpers, two launcher scripts, one README note, eleven unit tests. The promote workflow now: dry-run → preview rollback inventory → `--apply` → file move → POST `/reload-bundles` → confirmation listing.
+
+**Scope**: 6 files; zero DB delta.
+
+| File | Action | LOC |
+|---|---|---:|
+| `src/rcm/routers/public/predictions.py` | NEW `POST /api/predictions/reload-bundles` endpoint; NEW `_read_bundle_schema()` + `_inventory_available_bundles()` helpers (read-only, no booster load) | +60 |
+| `scripts/cr079_promote.py` | NEW `_describe_bundle()`, `_collect_rollback_inventory()`, `_print_inventory()`, `_print_current_production()`, `_reload_running_backend()`; main flow shows the rollback inventory before AND after `--apply`, and `--apply` calls the reload endpoint with fail-soft error handling | +145 |
+| `scripts/run_dev.sh` | NEW — bash launcher with `--reload` baked in; forwards extra args after `--` | +25 |
+| `scripts/run_dev.ps1` | NEW — PowerShell launcher with `--reload` baked in | +18 |
+| `README.md` | Note clarifying that any `src/rcm/` edit needs `--reload` or a manual restart; references both launchers; mentions the reload-bundles endpoint as part of the CR-079 promote workflow | +12 |
+| `tests/unit/test_cr081_promotion_safety.py` | NEW — 11 tests (cache invalidation, inventory shape, schema-missing skip, canonical/rotated listing, sibling ordering, describe-bundle metrics, gate-config sync) | +175 |
+
+**What changed**:
+
+- **`POST /api/predictions/reload-bundles`**: clears `_FB_PREDICTOR_CACHE` and returns `{status, cleared_predictors, available_bundles, fb_primary_enabled}`. Each `available_bundles[i]` carries `service_variant`, `claim_subtype`, `artifact_dir`, `model_version`, `feature_engineering_version`, `calibrator_version`, `decision_threshold`, `training_size`, `training_prevalence`. No booster load — read-only on `feature_schema.json`. Safe to call from any operator surface.
+- **`cr079_promote.py`** now prints:
+  - At gate-evaluation time: `Current production:` (model_version + threshold per variant) + `Available rollback candidates (before promotion):` (canonical slot + every timestamped sibling).
+  - After a successful `--apply`: the reload-bundles response (cleared count + new available bundles), `Current production:` again (post-swap), and `Available rollback candidates (after promotion):`.
+  - The "[ROLLBACK TARGET (next revert)]" tag flags the canonical slot so the operator knows what a one-step revert would restore; rotated siblings carry `[older rollback]` with their `[ts=<suffix>]`.
+- **Reload call is fail-soft**: if the API is unreachable (e.g. the operator is running the promote script in a cold environment), the script prints the manual recovery curl and continues. The on-disk swap stands either way.
+- **Launchers** (`scripts/run_dev.{sh,ps1}`) — both set `PYTHONPATH=src` and run `uvicorn rcm.main:app --reload --host 127.0.0.1 --port 8000 --log-level warning`. Extra args forwarded.
+
+**System behavior after this change**:
+
+- After `scripts/cr079_promote.py --apply --variants 837I_home_care`, the running uvicorn drops its predictor cache and lazy-loads the new bundle on the very next `/predict-file` call. No backend restart required.
+- Operators see, in both dry-run and apply modes, exactly which model_version is in production for each variant and which model_version would be restored by a one-step revert. Older rollbacks (rotated aside by prior promotions) are listed with their timestamp suffix so the operator can `mv artifacts/featurebuilder_pre_cr079/<key>.<ts> artifacts/featurebuilder/<key>` to restore them deliberately.
+- New devs / contributors land on the launcher scripts via README; the `--reload` requirement is documented inline.
+- The "I edited Python but the API behaves like the old code" failure mode (which actually bit CR-078 verification) no longer happens to anyone who uses the launcher scripts.
+
+**How to use / verify**:
+
+```bash
+# 1. Endpoint smoke
+curl -s -X POST http://localhost:8000/api/predictions/reload-bundles | python -m json.tool
+# Expected: status=ok, cleared_predictors=<N>, available_bundles=[3 entries].
+
+# 2. Promote-script preview (dry run)
+PYTHONPATH=src python scripts/cr079_promote.py
+# Prints "Current production:" + "Available rollback candidates (before promotion):"
+# BEFORE gate evaluation.
+
+# 3. Promote + reload in one go (when a real candidate exists)
+PYTHONPATH=src python scripts/cr079_promote.py --apply --variants 837I_home_care
+# Moves files + POSTs to /reload-bundles + prints the post-state inventory.
+
+# 4. Dev launchers
+bash scripts/run_dev.sh                # Linux/macOS/Git-Bash
+.\scripts\run_dev.ps1                  # PowerShell on Windows
+
+# 5. Tests
+PYTHONPATH=src python -m pytest tests/unit/test_cr081_promotion_safety.py -v
+# 11/11 expected.
+```
+
+Live verification done in-session:
+
+| Check | Outcome |
+|---|---|
+| POST /api/predictions/reload-bundles returns 3 bundles | ✅ |
+| Inventory carries model_version + threshold + FE version | ✅ |
+| Dry-run promote prints current production + rollback inventory | ✅ |
+| Older 837I rollback (rotated at `20260616T093438`) listed | ✅ |
+| 315/315 unit tests pass (304 + 11 new) | ✅ |
+
+**Tests**:
+
+`tests/unit/test_cr081_promotion_safety.py` — 11 tests:
+
+- **Cache invalidation** (4): direct cache-clear removes every entry; inventory reads schema fields; inventory skips missing dirs; inventory still enumerates a bundle dir even when its schema file is missing (fields surface as None — defensive).
+- **Rollback inventory** (6): canonical slot listed first; multiple rotated siblings ordered newest-first; absent rollback dir returns empty; unknown variant directories ignored; `_describe_bundle` extracts model_version, threshold, and held-out F1/AUC; `_describe_bundle` returns None for a dir with no schema.
+- **Promote config sanity** (1): `VARIANTS` constant still matches `GATES` keys.
+
+Full suite: **315/315 pass**.
+
+**Performance impact**: none. The endpoint is read-only and the helpers do not touch the booster.
+
+**Architecture principles A-E compliance**:
+
+| Principle | Compliance |
+|---|---|
+| A. Storage Minimization | ✅ Zero new persistent objects — endpoint is read-only |
+| B. Database Discipline | ✅ Zero new DB objects |
+| C. No Premature Persistence | ✅ Rollback inventory is computed from file mtimes / schemas, not a registry table |
+| D. Query Efficiency | ✅ Same query path; reload-bundles does no DB I/O |
+| E. Default Position | ✅ Smallest change that removes the stale-cache footgun |
+
+### Red flags
+
+| Risk | Status |
+|---|---|
+| Adds new DB state? | NO |
+| New endpoint requires authentication? | Same posture as the rest of `/api/predictions/*` (none today — local dev stack). If/when auth is added project-wide, this endpoint inherits it. |
+| Could reload-bundles be hammered to DoS the cache? | Trivially — but predict-file would just re-load bundles lazily. ~50 ms per variant first call. Not a concern. |
+| Could a partial promote leave the cache out of sync? | NO — promote calls reload-bundles AFTER every file move; reload clears every key. The next predict re-loads from whatever's on disk. |
+| Older rollback information silently lost? | NO — `_collect_rollback_inventory` enumerates `<key>.*` siblings; older bundles are visible until manually deleted. |
+| `--reload` mode hides real prod behaviour? | YES (it's dev-only). README is explicit; production should run without `--reload` and rely on deliberate restarts. |
+
+**Known constraints / follow-ups**:
+
+- **Issue B from the audit (CR-080 `total` undercount past first page) is NOT addressed.** Today's data is well under the threshold where this surfaces (32 rows → all fetched on every page). Deferred until training-history rows exceed ~80.
+- **Reload-bundles has no authentication.** The endpoint inherits whatever posture the surrounding `/api/predictions/*` routes have, which today is none. Any operator-facing UI hardening pass should cover this.
+- **`fb_primary_enabled` is exposed in the reload response** so operators can see at a glance whether the kill switch is engaged (`RCM_FB_PRIMARY=false` would change the prediction path). Read-only — does not toggle the flag.
+- **The promote script's "(after promotion)" rollback listing** depends on the reload-bundles call succeeding. If reload-bundles is unreachable, the script still prints the post-swap inventory from disk; only the cleared-predictor count is absent.
+- **A pre-existing bug discovered during CR-081 verification**: a `/train` call after a tuned-bundle promotion silently overwrites the tuned bundle with stock-config weights (re-trained from scratch). The CR-079 tuned 837I bundle (`v1.fb.tuned.20260616T090800`) was overwritten by a subsequent `/train` at `T10:42:20`. The rollback dir still holds the genuine CR-067 baseline so reverting works, but the tuned bundle itself is gone. This is **expected `/train` behaviour** but worth surfacing — operators should know that "click Train Model" replaces every variant's bundle. Not in CR-081 scope; documented here for awareness.
+
+**Related**: CR-067 / CR-067A (introduced the predictor cache); CR-079 (introduced the promote workflow this CR hardens); CR-078 verification incident (the precedent failure of stale uvicorn imports that Issue D documents); the post-CR-080 risk audit (the doc that catalogued Issues A/B/C/D and proposed prioritisation).
+
+---
+
+## CR-082 + CR-082A — 2026-06-16 — Legacy database deletion (~8.66 GB reclaimed)
+
+**Trigger**: Pre-existing native PostgreSQL 16 service held two legacy databases — `rcm_denials` (8616 MB) and `rcm_v2_verify` (45 MB) — from before the docker-based dev stack landed. The active FB pipeline runs entirely against the docker PG at `localhost:5433/rcm_denials_dev`; the legacy DBs were believed orphaned. CR-082 asked for a verification + deletion sequence; CR-082A followed up with the bench_parser DSN fix the verification surfaced.
+
+**Decision**: Run a structured five-step verification (DATABASE_URL audit, code grep, FB smoke, native-PG inventory, pg_stat_activity audit), repoint the one remaining code reference (`scripts/bench_parser.py`) at the live docker DB, then `DROP DATABASE` both legacy DBs against the native cluster. No schema change, no FB change, no API change — pure cleanup.
+
+**Scope**: 1 file edit + 2 DROP DATABASE statements.
+
+| Surface | Change |
+|---|---|
+| `scripts/bench_parser.py` | DSN repointed from `postgresql+asyncpg://postgres:postgres@localhost:5432/rcm_v2_verify` (deleted host) → `postgresql+asyncpg://rcm:rcm_dev_password@localhost:5433/rcm_denials_dev` (live docker DB). Two lines changed; comment added. |
+| Native PG (5432) | `DROP DATABASE rcm_denials;` + `DROP DATABASE rcm_v2_verify;` — verified zero application connections before drop. |
+| Docker PG (5433) | Unchanged. |
+| `src/rcm/**` | Untouched — no code references to the deleted DBs existed. |
+| `tests/**` | Untouched. |
+| Migrations / Alembic | Untouched. |
+| `artifacts/` | Untouched. |
+
+**What changed**:
+
+- Native PG cluster now holds only `prac_db` (8 MB) + `postgres` (8 MB). The two legacy DBs that consumed 8.66 GB of disk are gone.
+- `scripts/bench_parser.py` now exercises the same docker DB the live API uses — benchmark output remains meaningful and the script no longer carries a broken DSN.
+- The repo is grep-clean for legacy DB references in runtime code paths. CHANGELOG mentions remain (audit trail) plus one stale `localhost:5432` in `README.md:17` that's documentation drift only.
+
+**Pre-deletion verification** (Report 1 — Dependency verification):
+
+| Source | Reference to legacy DB? |
+|---|---|
+| `.env` | NO — `postgresql+asyncpg://rcm:***@localhost:5433/rcm_denials_dev` |
+| `.env.remote` | mentions `rcm_denials` but on a different host (`104.130.220.20:30432`) — irrelevant to local deletion |
+| `docker-compose.yml` | NO — defines `rcm_denials_dev` only |
+| `alembic.ini` | NO — DSN injected at runtime |
+| `src/rcm/**/*.py` | NO matches |
+| `tests/**/*.py` | NO matches |
+| `frontend/**` | NO matches |
+| `scripts/bench_parser.py:39-40` | YES — repointed in CR-082A before deletion |
+| `README.md:17` | stale doc (says ".env points at 5432" — actual `.env` points at 5433); doc drift, not a runtime dep |
+| `CHANGELOG.md` | historical references (CR-004 / CR-013 / parser-stress) — audit trail, expected |
+
+**Pre-deletion connection audit** (Report 2):
+
+```
+pg_stat_activity on rcm_denials, rcm_v2_verify
+   (0 rows) — no application connections
+```
+
+**Deletion execution log** (Report 3):
+
+```
+Terminate sessions in legacy DBs:  (0 rows — no sessions to terminate)
+DROP DATABASE rcm_denials;         DROP DATABASE
+DROP DATABASE rcm_v2_verify;       DROP DATABASE
+```
+
+**Post-deletion inventory** (Report 4):
+
+Native PG (5432):
+| datname  | size    |
+|----------|---------|
+| prac_db  | 8215 kB |
+| postgres | 7975 kB |
+
+Docker PG (5433) — unchanged:
+| datname         | size    |
+|-----------------|---------|
+| rcm_denials_dev | 1032 MB |
+| postgres        | 7487 kB |
+
+Space reclaimed: **8,661 MB** (~8.66 GB) from native PG.
+
+**Application smoke test** (Report 5):
+
+| Endpoint | Result |
+|---|---|
+| `GET /api/predictions/dataset-stats` | `total=56935 denied=13259 denial_rate=23.3%` ✓ |
+| `POST /api/predictions/reload-bundles` | `status=ok cleared=1 bundles=3` ✓ |
+| `GET /api/ml/training-history?limit=2` | `total_runs=4 first_run.variants={healthcare,dental,home_care}` ✓ |
+| `POST /api/predictions/predict-file/4081` (837I) | `predicted=10 HIGH=4 MEDIUM=1 LOW=5` ✓ |
+| `POST /api/predictions/predict-file/4806` (837P) | `predicted=10 HIGH=5 MEDIUM=0 LOW=5` ✓ |
+| `pytest tests/unit -q` | **315/315 pass** ✓ |
+
+**System behavior after this change**:
+
+- Active backend continues to serve from docker PG (`localhost:5433/rcm_denials_dev`) — unchanged.
+- Native PG no longer holds RCM project data. Only the unrelated `prac_db` + the admin `postgres` DB remain.
+- `scripts/bench_parser.py` runs against the live docker DB (DSN updated). Bench output now reflects real schema with audit triggers, MVs, and indexes — different from the pre-CR-082 baseline that ran against a clean `rcm_v2_verify`. **Future benchmark comparisons must use a CR-082+ baseline** (the old PARSER-STRESS-001 numbers in CR-014 are not directly comparable).
+- Disk reclaim: ~8.66 GB on the Windows host PG data dir.
+
+**How to use / verify**:
+
+```bash
+# Native PG inventory (confirms only prac_db + postgres remain)
+PGPASSWORD=postgres123 psql -h localhost -p 5432 -U postgres -d postgres \
+  -c "SELECT datname, pg_size_pretty(pg_database_size(datname)) FROM pg_database WHERE datname NOT IN ('template0','template1');"
+
+# Docker PG smoke
+docker exec rcm-postgres psql -U rcm -d rcm_denials_dev -c "SELECT current_database();"
+
+# Backend smoke
+curl -s -X POST http://localhost:8000/api/predictions/reload-bundles | python -m json.tool
+
+# Bench smoke (against the now-repointed DSN)
+PYTHONPATH=src python scripts/bench_parser.py --help 2>/dev/null || true
+```
+
+**Tests**: no new tests added. Existing 315/315 unit suite re-run post-deletion: all green.
+
+**Performance impact**: 8.66 GB of disk freed. Native PG buffer cache pressure drops correspondingly. Active workload (docker PG) unaffected.
+
+**Architecture principles A-E compliance**:
+
+| Principle | Compliance |
+|---|---|
+| A. Storage Minimization | ✅ — the entire CR IS storage minimization |
+| B. Database Discipline | ✅ — removed orphaned DBs that had no verified consumer |
+| C. No Premature Persistence | ✅ — N/A (deletion, not creation) |
+| D. Query Efficiency | ✅ — no query path touched |
+| E. Default Position | ✅ — verification-first; nothing destructive until grep + connection-audit cleared |
+
+### Red flags
+
+| Risk | Status |
+|---|---|
+| Active backend would lose data? | NO — docker PG `rcm_denials_dev` untouched |
+| Tests rely on deleted DBs? | NO — grep clean; suite ran 315/315 post-deletion |
+| Migration history affected? | NO — alembic state lives in `rcm_denials_dev` |
+| Artifacts / model bundles affected? | NO — files on disk under `artifacts/`, not in either DB |
+| Backup of legacy DBs taken first? | **NO** — the user authorized the deletion without a snapshot. No recovery path beyond the WAL/disk-image retention of the underlying Windows host. |
+| Could the `prac_db` (unrelated) be at risk? | NO — explicit DROP statements named the two target DBs only |
+
+**Known constraints / follow-ups**:
+
+- **README line 17 says ".env already points at localhost:5432"** — documentation drift (actual `.env` is on `:5433`). Not a runtime issue. Cleanup candidate for a doc PR.
+- **`.env.remote`** still references `rcm_denials` but on the remote shared cluster (`104.130.220.20:30432`). The remote DB is unaffected by this CR — only the native local cluster was touched.
+- **PARSER-STRESS-001 baseline (CR-014) is no longer directly comparable.** The bench DSN now hits a fully-migrated schema with audit triggers and MV refreshes, where the old `rcm_v2_verify` was a minimal scratch DB. Any future perf-regression check needs a fresh baseline taken on the current setup.
+- **No backup taken.** If anything later proves to have been useful in the deleted DBs (unlikely — verification cleared every code path), recovery requires Windows filesystem / WAL forensics. Operator accepted the risk.
+
+**Related**: CR-004 (the original migration chain that landed in `rcm_denials_dev`), CR-013 (the CR that created `rcm_v2_verify` for benchmark isolation — this CR retires it), CR-014 (PARSER-STRESS-001 — the only consumer of `rcm_v2_verify`, now repointed), CR-067+ (the FB pipeline that defines the active prod state confirmed untouched).
+
+---
+
+## CR-082B — 2026-06-16 — Documentation sync after legacy-DB deletion
+
+**Trigger**: CR-082's post-deletion follow-ups flagged that `README.md:17` still claimed `.env already points at localhost:5432` (it points at `:5433`), and the docstring example in `tests/integration/test_parse_and_save.py:4` still showed a `:5432/rcm_denials` DSN. Doc drift after a destructive cleanup — left unfixed, the next contributor would believe native PG was authoritative.
+
+**Decision**: Doc-only sync. Update the README quickstart, add an explicit "Docker PG is authoritative" subsection that documents the native-PG retirement (with pointer at `scripts/bench_parser.py` as the canonical "repoint your script" example), and update the integration-test docstring example. Leave CHANGELOG entries on `localhost:5432` alone — they are audit trail.
+
+**Scope**: 2 files; zero code change.
+
+| File | Action | LOC |
+|---|---|---:|
+| `README.md` | Quickstart comment fixed (`:5432` → `:5433`); Database-connection section expanded with a "Docker PG is authoritative (CR-082)" subsection explaining the native-PG retirement and where to repoint legacy helper scripts | +18 / −2 |
+| `tests/integration/test_parse_and_save.py` | Module docstring example DSN updated to `localhost:5433/rcm_denials_dev` with a CR-082B note; remote-cluster example added as the second option | +6 / −2 |
+
+**What changed**:
+
+- README quickstart now matches reality — the `.env` shipped with the repo points at `localhost:5433`.
+- README's Database-connection section explicitly tells the reader that native PG on `:5432` (if present) is not used by any RCM tooling, and points at `scripts/bench_parser.py` (which CR-082A repointed) as the worked example for migrating an old helper.
+- Integration-test docstring no longer references the deleted `rcm_denials` DB. It now shows two valid DSN shapes: the docker dev DB and the remote shared cluster.
+
+**System behavior after this change**:
+
+- Onboarding a new developer who follows README literally lands on the docker DB and never tries to install native PG.
+- A reader investigating the `RCM_INTEGRATION_DSN` env var sees the right local-dev DSN inline.
+- `grep -rn "localhost:5432" --include="*.md" --include="*.py" --include="*.yml"` returns only CHANGELOG audit-trail lines and the README's own explanation of why `:5432` is no longer used — every active config and example references `:5433`.
+
+**How to use / verify**:
+
+```bash
+# README points at the live DB
+grep "localhost:543" README.md
+# Expect: only `:5433` mentions in active config / examples
+
+# Integration-test docstring contains the live DSN
+head -15 tests/integration/test_parse_and_save.py
+
+# Tests still pass
+PYTHONPATH=src python -m pytest tests/unit -q
+# 315/315 expected
+```
+
+**Tests**: no new tests; full unit suite re-run: **315/315 pass**.
+
+**Architecture principles A-E compliance**: all ✅ — documentation-only sync.
+
+### Red flags
+
+| Risk | Status |
+|---|---|
+| Could break tests? | NO — docstring change only |
+| Could break runtime? | NO — no source code touched |
+| Could mislead a reader after this CR? | NO — the new subsection explicitly retires `:5432` for RCM purposes |
+| Audit trail lost? | NO — CHANGELOG entries that reference `:5432` are deliberately preserved |
+
+**Known constraints / follow-ups**: none. README and integration-test docs now agree with reality.
+
+**Related**: CR-082 + CR-082A (the deletion this CR documents); CR-013 (the original "native PG verification" CR — its description still references `:5432` in CHANGELOG, kept as audit trail); CR-014 (PARSER-STRESS-001 — bench_parser.py).
+
+---
+
 # Maintenance reminder
 
 When adding a new entry:

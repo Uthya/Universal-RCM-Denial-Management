@@ -1,9 +1,15 @@
-"""End-to-end integration test against the remote dev DB.
+"""End-to-end integration test against the live dev DB.
 
-Skipped unless ``RCM_INTEGRATION_DSN`` env var is set, e.g.:
-    RCM_INTEGRATION_DSN='postgresql+asyncpg://postgres:...@host:5432/rcm_denials' pytest
-The remote dev DSN is the same as the one in `.env.remote`; CI can set this
-inline. We never read passwords from .env in tests.
+Skipped unless ``RCM_INTEGRATION_DSN`` env var is set. Local dev example
+(CR-082B — Docker PG is authoritative):
+
+    RCM_INTEGRATION_DSN='postgresql+asyncpg://rcm:rcm_dev_password@localhost:5433/rcm_denials_dev' pytest
+
+Or against the remote dev cluster:
+
+    RCM_INTEGRATION_DSN='<value from .env.remote>' pytest
+
+CI can set this inline. We never read passwords from .env in tests.
 """
 
 from __future__ import annotations

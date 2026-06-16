@@ -14,7 +14,7 @@ uv pip install -e ".[dev]"
 
 # 2a. Local dev DB (recommended for iteration)
 docker compose up -d
-# .env already points at localhost:5432
+# .env already points at localhost:5433 (Docker PG — authoritative)
 
 # 2b. OR target the remote dev DB
 mv .env .env.local.bak && mv .env.remote .env
@@ -29,12 +29,26 @@ alembic upgrade head
 python scripts/verify_db_connection.py
 
 # 6. (Optional) Start the developer console
-#    Terminal A — backend
+#    Terminal A — backend (always use --reload OR call the launcher below)
 PYTHONPATH=src uvicorn rcm.main:app --reload --port 8000
+#    Or use the standard CR-081 launchers:
+#      bash:  scripts/run_dev.sh
+#      pwsh:  .\scripts\run_dev.ps1
 #    Terminal B — frontend
 cd frontend && npm install && npm run dev
 #    Browser → http://127.0.0.1:5173
 ```
+
+> **Runtime consistency (CR-081)**: any source-code edit under `src/rcm/`
+> requires either `--reload` mode (which `scripts/run_dev.sh` /
+> `scripts/run_dev.ps1` enforce) or an explicit backend restart. A uvicorn
+> launched without `--reload` will silently serve the imports it loaded at
+> startup — verified incident: CR-078 reason-text changes were live in
+> source but invisible in the UI until the backend was restarted.
+> After promoting tuned bundles via `scripts/cr079_promote.py --apply`, the
+> running uvicorn additionally needs `POST /api/predictions/reload-bundles`
+> to drop the in-process predictor cache. The promote script does this
+> automatically.
 
 ## Developer console (`/api/dev/*` + frontend at 127.0.0.1:5173)
 
@@ -52,7 +66,8 @@ Database, Jobs, Audit. See `CHANGELOG.md` CR-038 for the design + phasing.
 
 ## Database connection
 
-* `.env` (gitignored) holds the live config — points at local docker by default
+* `.env` (gitignored) holds the live config — points at `localhost:5433`
+  (Docker PG, container `rcm-postgres`, DB `rcm_denials_dev`)
 * `.env.remote` (gitignored) is pre-filled for the shared remote dev cluster
 * `.env.example` (committed) is the template
 
@@ -60,6 +75,22 @@ Database, Jobs, Audit. See `CHANGELOG.md` CR-038 for the design + phasing.
 
 URL-encode special characters in passwords:
 `!` → `%21`, `#` → `%23`, `@` → `%40`.
+
+### Docker PG is authoritative (CR-082)
+
+The Docker container at `localhost:5433` is the only RCM project database on
+this machine. The historical **native Windows PostgreSQL service**
+(`postgresql-x64-16`) that ran on `localhost:5432` previously held two RCM
+databases (`rcm_denials` and `rcm_v2_verify`); both were **deleted in CR-082**
+after the verification phase confirmed zero runtime references. The native PG
+service may still be running on `:5432` for unrelated reasons (e.g. `prac_db`),
+but **no RCM tooling or test ever points there**. New work targets
+`:5433/rcm_denials_dev` exclusively.
+
+If you wrote a helper script that used to hit `localhost:5432` for RCM data,
+repoint it at `localhost:5433/rcm_denials_dev` with creds `rcm:rcm_dev_password`
+(or read them from `.env`). See `scripts/bench_parser.py` for the canonical
+example (lines 39-41).
 
 ## Repo layout
 

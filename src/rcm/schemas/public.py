@@ -199,6 +199,9 @@ class TrainModelResponse(BaseModel):
     training_time_seconds: float
     model_version: str | None = None
     evaluation: TrainEvaluation | None = None
+    # CR-080: in-memory grouping handle that lets the frontend match the
+    # immediate response to the just-created history row(s). Not persisted.
+    training_run_id: str | None = None
 
 
 class RiskFactorItem(BaseModel):
@@ -254,6 +257,9 @@ class PredictFileResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 class TrainingHistoryItem(BaseModel):
+    """Legacy per-variant row shape — preserved for any external caller that
+    still wants the flat surface (e.g. the /latest-training endpoint's old
+    consumers). CR-080 added TrainingRunItem as the primary grouped shape."""
     training_id: str
     training_timestamp: str
     model_version: str | None
@@ -269,9 +275,48 @@ class TrainingHistoryItem(BaseModel):
     training_time_seconds: float | None
 
 
+class TrainingVariantMetrics(BaseModel):
+    """Per-variant block inside a grouped training run (CR-080)."""
+    training_id: str
+    service_variant: str                  # "837P" / "837D" / "837I"
+    claim_subtype: str | None             # "healthcare" / "dental" / "home_care"
+    model_version: str | None
+    training_timestamp: str
+    decision_threshold: float | None
+    total_claims_used: int
+    training_samples: int
+    validation_samples: int
+    accuracy: float | None
+    f1_score: float | None
+    precision: float | None
+    recall: float | None
+    roc_auc: float | None
+    pr_auc: float | None
+    denial_rate: float | None
+    training_time_seconds: float | None
+
+
+class TrainingRunItem(BaseModel):
+    """One logical training invocation, with one entry per variant trained
+    in that invocation. CR-080 presentation-layer grouping (no schema change).
+
+    ``training_run_id`` is synthetic — a deterministic hash of the earliest
+    member row's id. ``variants`` is keyed by ``claim_subtype`` so the UI can
+    look up healthcare / dental / home_care directly.
+    """
+    training_run_id: str
+    started_at: str                       # earliest training_timestamp in the run
+    ended_at: str                         # latest training_timestamp in the run
+    training_time_seconds: float | None   # sum of variant durations (None if missing)
+    model_version_group: str | None       # common prefix across variants when present
+    status: str                           # "success" if all variants succeeded
+    variant_count: int                    # 1..3 in practice
+    variants: dict[str, TrainingVariantMetrics] = Field(default_factory=dict)
+
+
 class TrainingHistoryResponse(BaseModel):
-    items: list[TrainingHistoryItem]
-    total: int
+    items: list[TrainingRunItem]
+    total: int                            # total runs (not rows)
 
 
 # ---------------------------------------------------------------------------

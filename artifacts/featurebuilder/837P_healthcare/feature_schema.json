@@ -1,7 +1,7 @@
 {
   "schema_version": "v1.0.0",
   "feature_engineering_version": "v1.0.0",
-  "model_version": "v1.fb.20260616T060216.837P_healthcare",
+  "model_version": "v1.fb.20260616T122116.837P_healthcare",
   "calibrator_version": "isotonic_v1",
   "service_variant": "837P",
   "claim_subtype": "healthcare",

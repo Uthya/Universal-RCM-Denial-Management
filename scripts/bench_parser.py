@@ -36,8 +36,11 @@ SCALES = (100, 1_000, 10_000)
 RUNS_PER_SCALE = 2
 PARSE_TARGET_CLAIMS_PER_SEC = 5_000
 
-LOCAL_DSN = "postgresql+asyncpg://postgres:postgres@localhost:5432/rcm_v2_verify"
-LOCAL_RAW_DSN = "postgresql://postgres:postgres@localhost:5432/rcm_v2_verify"
+# CR-082A — DSN repointed from the deleted native-PG `rcm_v2_verify` (5432)
+# to the docker dev DB `rcm_denials_dev` (5433). PARSER-STRESS-001 benchmark
+# now exercises the same DB the live backend uses.
+LOCAL_DSN = "postgresql+asyncpg://rcm:rcm_dev_password@localhost:5433/rcm_denials_dev"
+LOCAL_RAW_DSN = "postgresql://rcm:rcm_dev_password@localhost:5433/rcm_denials_dev"
 
 
 # ---------------------------------------------------------------------------

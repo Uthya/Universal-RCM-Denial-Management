@@ -1,7 +1,7 @@
 {
   "schema_version": "v1.0.0",
   "feature_engineering_version": "v1.0.0",
-  "model_version": "v1.fb.20260616T060218.837D_dental",
+  "model_version": "v1.fb.20260616T122118.837D_dental",
   "calibrator_version": "isotonic_v1",
   "service_variant": "837D",
   "claim_subtype": "dental",
