@@ -239,6 +239,49 @@ async def dataset_stats() -> DatasetStatsResponse:
 # Train
 # ---------------------------------------------------------------------------
 
+async def _refresh_training_corpus() -> dict[str, int]:
+    """CR-083: refresh mv_claim_labels before training begins.
+
+    Integrity rule: silent fallback to stale data is prohibited. Any failure
+    (DB unreachable, REFRESH error) raises HTTPException(503) so the caller
+    aborts training and the operator sees an explicit error.
+
+    Returns a dict with `duration_ms` and `row_count_after` on success.
+    """
+    t0 = time.perf_counter()
+    try:
+        conn = await asyncpg.connect(dsn=settings.sync_database_url(), timeout=8)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "Training aborted: cannot reach DB to refresh training corpus "
+                f"(mv_claim_labels). {type(exc).__name__}: {exc}"
+            ),
+        )
+    try:
+        try:
+            await conn.execute(
+                "REFRESH MATERIALIZED VIEW CONCURRENTLY mv_claim_labels"
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=503,
+                detail=(
+                    "Training aborted: REFRESH MATERIALIZED VIEW CONCURRENTLY "
+                    "mv_claim_labels failed. Training cannot proceed on stale "
+                    f"data. {type(exc).__name__}: {exc}"
+                ),
+            )
+        row_count = await conn.fetchval("SELECT count(*) FROM mv_claim_labels")
+    finally:
+        await conn.close()
+    return {
+        "duration_ms": int((time.perf_counter() - t0) * 1000),
+        "row_count_after": int(row_count or 0),
+    }
+
+
 @router.post("/train", response_model=TrainModelResponse)
 async def train_endpoint() -> TrainModelResponse:
     """Train all supported FeatureBuilder per-variant artifacts.
@@ -256,7 +299,20 @@ async def train_endpoint() -> TrainModelResponse:
 
     Kill switch: `RCM_FB_PRIMARY=false` reverts to the legacy simple_pipeline
     training endpoint behavior.
+
+    CR-083: refreshes mv_claim_labels before training. On refresh failure
+    the endpoint returns 503 and does NOT train — stale-corpus training is
+    prohibited.
     """
+    # CR-083: refresh training corpus before any path runs. Covers both the
+    # FB primary path and the legacy simple_pipeline kill-switch path, since
+    # both consume mv_claim_labels.
+    refresh_info = await _refresh_training_corpus()
+    logger.info(
+        "CR-083 refresh complete: %d ms, %d rows in mv_claim_labels",
+        refresh_info["duration_ms"], refresh_info["row_count_after"],
+    )
+
     if not _fb_primary_enabled():
         return await _legacy_train_simple()
 

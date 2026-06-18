@@ -1,0 +1,92 @@
+{
+  "started_at": "2026-06-17T12:29:26.137035+00:00",
+  "plan": "balanced",
+  "trials_per_variant": 60,
+  "warm_up_trials": 10,
+  "total_seconds": 238.8,
+  "variants": {
+    "837I_home_care": {
+      "service_variant": "837I",
+      "claim_subtype": "home_care",
+      "best_trial_number": 45,
+      "best_objective": 0.9343241591055537,
+      "best_params": {
+        "n_estimators": 650,
+        "max_depth": 9,
+        "learning_rate": 0.021647626842535107,
+        "min_child_weight": 1,
+        "gamma": 2.859834754362774,
+        "subsample": 0.9626019002663525,
+        "colsample_bytree": 0.5189558662804681,
+        "colsample_bylevel": 0.6126773884839436,
+        "reg_alpha": 3.8550068736061274e-08,
+        "reg_lambda": 0.01808530551967644,
+        "scale_pos_weight": 2.4199408168170637,
+        "max_delta_step": 5
+      },
+      "trial_counts": {
+        "total": 120,
+        "complete": 59,
+        "pruned": 61,
+        "failed": 0
+      },
+      "study_seconds": 232.1,
+      "candidate_dir": "artifacts\\featurebuilder_cr079_candidate\\837I_home_care",
+      "candidate_metrics": {
+        "n_training_rows": 9563,
+        "n_validation_rows": 2049,
+        "n_held_out_rows": 2050,
+        "prevalence": 0.4044795783926219,
+        "accuracy_at_threshold": 0.8717073170731707,
+        "precision_at_threshold": 0.8694516971279374,
+        "recall_at_threshold": 0.8033775633293124,
+        "f1_at_threshold": 0.8351097178683385,
+        "roc_auc": 0.8924747754663315,
+        "pr_auc": 0.8908866464887852,
+        "brier_uncalibrated": 0.09301808476448059,
+        "brier_calibrated": 0.08257027715444565,
+        "positive_rate": 0.37365853658536585,
+        "validation": {
+          "n": 2049,
+          "prevalence": 0.4045876037091264,
+          "accuracy_at_threshold": 0.8857979502196194,
+          "precision_at_threshold": 0.8888888888888888,
+          "recall_at_threshold": 0.8202653799758746,
+          "f1_at_threshold": 0.8531994981179423,
+          "roc_auc": 0.9144085309181516,
+          "pr_auc": 0.9094720282775652,
+          "brier_uncalibrated": 0.08812081068754196,
+          "brier_calibrated": 0.07447391748428345,
+          "positive_rate": 0.3733528550512445
+        },
+        "held_out": {
+          "n": 2050,
+          "prevalence": 0.40439024390243905,
+          "accuracy_at_threshold": 0.8717073170731707,
+          "precision_at_threshold": 0.8694516971279374,
+          "recall_at_threshold": 0.8033775633293124,
+          "f1_at_threshold": 0.8351097178683385,
+          "roc_auc": 0.8924747754663315,
+          "pr_auc": 0.8908866464887852,
+          "brier_uncalibrated": 0.09301808476448059,
+          "brier_calibrated": 0.08257027715444565,
+          "positive_rate": 0.37365853658536585
+        },
+        "hyperparameters": {
+          "n_estimators": 650,
+          "max_depth": 9,
+          "learning_rate": 0.021647626842535107,
+          "min_child_weight": 1,
+          "gamma": 2.859834754362774,
+          "subsample": 0.9626019002663525,
+          "colsample_bytree": 0.5189558662804681,
+          "colsample_bylevel": 0.6126773884839436,
+          "reg_alpha": 3.8550068736061274e-08,
+          "reg_lambda": 0.01808530551967644,
+          "scale_pos_weight": 2.4199408168170637,
+          "max_delta_step": 5
+        }
+      }
+    }
+  }
+}

@@ -118,6 +118,14 @@ class FeatureBuilder:
     async def fit_transform(
         self, session: AsyncSession, df: pd.DataFrame, y: pd.Series,
     ) -> FeatureArtifacts:
+        # CR-088: populate reference-data lookup from DB if not already loaded.
+        # If the caller passed a pre-loaded ref_lookup (predict-time bundle
+        # restore path), we keep it as-is — only an empty default triggers a
+        # fresh DB load. Empty DB tables degrade gracefully (the lookup stays
+        # empty for those tables; existing default-value fallbacks in each
+        # category module remain unchanged).
+        await self._maybe_load_ref(session)
+
         if df.empty:
             empty_X = self._empty_matrix()
             self.encoder = encoded.make_encoder()
@@ -133,8 +141,15 @@ class FeatureBuilder:
         # Rarity vocab from training data
         self.rarity_state = RarityState.fit(df)
 
+        # CR-088: enrich df with ref-derived source columns (cpt_category, dx_chapter)
+        # so the LeakageSafeTargetEncoder can target-encode them alongside the
+        # original 5 categoricals. The two new encoded outputs route through
+        # Category K and replace the constant-0 placeholders that clinical.py
+        # would otherwise emit (see _assemble below).
+        df_enriched = self._attach_ref_categoricals(df)
+
         # Fit + transform encoder
-        self.encoder, enc_frame = encoded.fit_transform(df, y)
+        self.encoder, enc_frame = encoded.fit_transform(df_enriched, y)
 
         # Assemble all categories
         X = self._assemble(
@@ -160,11 +175,17 @@ class FeatureBuilder:
                 "FeatureBuilder.transform called before fit_transform; "
                 "supply a loaded encoder + rarity_state."
             )
+        # CR-088: same lazy ref-data load as fit_transform. Cached on the
+        # FeatureBuilder instance so subsequent transform() calls on the same
+        # instance (predict-cache reuse per CR-067) avoid re-querying.
+        await self._maybe_load_ref(session)
+
         if df.empty:
             return self._empty_matrix()
 
         hist_snap, prov_snap, joint_snap = await self._load_snapshots(session, df)
-        enc_frame = encoded.transform(df, self.encoder)
+        df_enriched = self._attach_ref_categoricals(df)
+        enc_frame = encoded.transform(df_enriched, self.encoder)
         X = self._assemble(
             df,
             history_snap=hist_snap,
@@ -178,6 +199,61 @@ class FeatureBuilder:
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
+    async def _maybe_load_ref(self, session: AsyncSession) -> None:
+        """CR-088: lazy DB load of reference data.
+
+        Loads ``procedure_codes`` / ``diagnosis_codes`` / ``ncci_edits`` /
+        ``cms_lcd_coverage`` / ``payer_policies`` into ``self.ref_lookup``
+        exactly once per FeatureBuilder instance. Empty tables degrade to
+        the existing empty defaults — the FE category modules' fallback
+        behaviour is preserved verbatim.
+
+        If the caller passed in a pre-populated ``ref_lookup`` (e.g. a test
+        injecting a synthetic snapshot), it's respected as-is.
+        """
+        if self.ref_lookup is not None and not self.ref_lookup.is_empty:
+            return
+        try:
+            self.ref_lookup = await RefDataLookup.from_session(session)
+        except Exception as exc:
+            # Defensive: an unexpected DB error during ref-data load must
+            # NOT brick training/prediction. Fall back to an empty lookup;
+            # downstream features use their defaults exactly as before.
+            logger.warning(
+                "CR-088 RefDataLookup.from_session failed; using empty lookup. %s: %s",
+                type(exc).__name__, exc,
+            )
+            self.ref_lookup = RefDataLookup()
+
+    def _attach_ref_categoricals(self, df: pd.DataFrame) -> pd.DataFrame:
+        """CR-088: derive ``cpt_category`` and ``dx_chapter`` source columns
+        from ``self.ref_lookup`` and attach them to a copy of ``df`` so the
+        Category K target encoder can fit/transform them alongside the
+        original 5 categoricals.
+
+        When ``ref_lookup`` is empty (cold start, before CR-087 data load),
+        both columns default to the missing-categorical sentinel; the encoder
+        then treats them as a single category and produces a constant
+        encoded value — matching the pre-CR-088 behaviour for back-compat.
+        """
+        from rcm.features.constants import MISSING_CATEGORICAL_SENTINEL
+        out = df.copy()
+        cpts = out.get("primary_cpt", pd.Series([None] * len(out), index=out.index))
+        dxs  = out.get("primary_dx",  pd.Series([None] * len(out), index=out.index))
+        out["cpt_category"] = [
+            (self.ref_lookup.procedure_metadata.get(str(c), {}).get("category")
+             if c is not None and not (isinstance(c, float) and pd.isna(c)) else None)
+            or MISSING_CATEGORICAL_SENTINEL
+            for c in cpts
+        ]
+        out["dx_chapter"] = [
+            (self.ref_lookup.dx_chapter.get(str(d))
+             if d is not None and not (isinstance(d, float) and pd.isna(d)) else None)
+            or MISSING_CATEGORICAL_SENTINEL
+            for d in dxs
+        ]
+        return out
+
     async def _load_snapshots(
         self, session: AsyncSession, df: pd.DataFrame,
     ) -> tuple[PatientHistorySnapshot, ProviderProfileSnapshot, JointEncoderSnapshot]:
@@ -226,6 +302,14 @@ class FeatureBuilder:
             cpt_dx_denial_rate=joint_snap.cpt_dx,
             dx_chapter_encoded=None,
             cpt_category_encoded=None,
+        )
+        # CR-088: clinical.compute writes constant-0 placeholders for these two
+        # target-encoded columns when the parameters are None. Drop them so the
+        # ref-data-driven values from encoded_frame are not shadowed by the
+        # placeholders in the final concat.
+        clin_cols = clin_cols.drop(
+            columns=["cpt_category_encoded", "primary_dx_chapter_encoded"],
+            errors="ignore",
         )
         code_cols = coding.compute(
             df,

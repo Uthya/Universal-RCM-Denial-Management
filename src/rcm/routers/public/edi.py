@@ -71,6 +71,11 @@ async def upload_edi(file: UploadFile = File(...)) -> EdiUploadResponse:
             parser_version = edi_file.parser_version
             parse_status = _enum_value(edi_file.parse_status)
             summary = edi_file.parse_summary or {}
+        # CR-090: schedule a debounced background refresh of mv_claim_labels.
+        # No-op if no async loop, never blocks the response, errors are logged
+        # but never surfaced. CR-083 train-time refresh remains the backstop.
+        from rcm.core.mv_refresh import schedule_mv_refresh
+        schedule_mv_refresh()
     except EnvelopeError as exc:
         return EdiUploadResponse(
             success=False, edi_file_id=None, file_type=None,

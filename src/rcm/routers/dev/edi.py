@@ -99,6 +99,9 @@ async def upload_edi(
                 session, raw, file_name=file.filename or "uploaded.edi",
             )
             await session.commit()
+        # CR-090: same debounced auto-refresh as the public /upload path.
+        from rcm.core.mv_refresh import schedule_mv_refresh
+        schedule_mv_refresh()
     except EnvelopeError as exc:
         return EdiUploadResponse(
             edi_file_id=None,

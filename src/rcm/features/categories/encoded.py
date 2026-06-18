@@ -1,14 +1,24 @@
-"""Category K — target-encoded categoricals (5 features).
+"""Category K — target-encoded categoricals.
 
 These wrap LeakageSafeTargetEncoder. The builder calls `fit_transform` at
 training time and `transform` at predict time, never bypassing the encoder.
 
-Columns covered:
-    payer_name_encoded          ← payer_canonical_name
-    primary_cpt_encoded         ← primary_cpt
-    primary_dx_encoded          ← primary_dx
-    place_of_service_encoded    ← primary_pos
-    facility_type_code_encoded  ← facility_type_code
+Columns covered (post-CR-088: 7):
+    payer_name_encoded            ← payer_canonical_name
+    primary_cpt_encoded           ← primary_cpt
+    primary_dx_encoded            ← primary_dx
+    place_of_service_encoded      ← primary_pos
+    facility_type_code_encoded    ← facility_type_code
+    cpt_category_encoded          ← cpt_category    (CR-088: derived from ref.procedure_metadata[cpt]['category'])
+    primary_dx_chapter_encoded    ← dx_chapter      (CR-088: derived from ref.dx_chapter[dx])
+
+The two CR-088 columns route through Category K rather than Category C
+(clinical.py) because (a) they're target-encoded against the denial label
+the same way as the original 5 and (b) the existing encoder's persistence
+/ leakage-safe CV machinery handles them transparently. Their FeatureSpec
+in the registry continues to live under Category C (clinical) — the
+registry classification is descriptive (what the feature is about), the
+encoder location is operational (what subsystem computes it).
 """
 
 from __future__ import annotations
@@ -25,6 +35,8 @@ _SOURCE_COLUMNS = (
     "primary_dx",
     "primary_pos",
     "facility_type_code",
+    "cpt_category",
+    "dx_chapter",
 )
 _OUTPUT_NAMES = (
     "payer_name_encoded",
@@ -32,6 +44,8 @@ _OUTPUT_NAMES = (
     "primary_dx_encoded",
     "place_of_service_encoded",
     "facility_type_code_encoded",
+    "cpt_category_encoded",
+    "primary_dx_chapter_encoded",
 )
 
 
