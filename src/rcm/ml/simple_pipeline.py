@@ -608,12 +608,31 @@ async def predict_file(
         logger.warning("SHAP failed (%s); reasons will be empty", exc)
         contribs = np.zeros_like(X.to_numpy())
 
+    # CR-092 Issue 2: route simple_pipeline's raw-feature reasons through
+    # the canonical renderer so the API never exposes internal column names
+    # like ``is_replacement_freq`` or per-payer one-hot columns. This is the
+    # SAME render_risk_factors call the FB-primary path uses, so both paths
+    # emit the same bucket-form reason rows. Unknown features collapse to
+    # ``general`` (REASON_GENERAL) per the renderer contract.
+    from rcm.ml.reason_renderer import render_risk_factors
+
     out: list[ScoredClaim] = []
     for i, row in df.iterrows():
         risk = float(proba[i])
         level = _risk_level(risk, artifact.decision_threshold)
-        reasons = _shap_to_reasons(
+        raw_reasons = _shap_to_reasons(
             X.iloc[i], row.to_dict(), contribs[i], artifact.feature_labels,
+        )
+        subtype = _safe_str_or_none(row.get("claim_subtype")) or None
+        # render_risk_factors expects {feature, impact} pairs and produces the
+        # bucket-form rows (slug/title/sentence/impact/direction). For features
+        # not in the renderer's _FEATURE_TO_BUCKET map (e.g. simple_pipeline's
+        # one-hot payer/CPT columns), the lookup falls back to REASON_GENERAL.
+        rendered_reasons = render_risk_factors(
+            [{"feature": r.get("feature"), "impact": r.get("impact", 0.0)}
+             for r in raw_reasons],
+            top_k=5,
+            claim_subtype=subtype,
         )
         # CR-060: every field whose downstream Pydantic type is `str | None`
         # goes through _safe_str_or_none to coerce NaN → None. Fields with
@@ -624,10 +643,10 @@ async def predict_file(
             claim_number=str(row["claim_number"]),
             payer_name=_safe_str_or_none(row.get("payer_name")),
             service_variant=_safe_str_or_none(row.get("service_variant")) or "",
-            claim_subtype=_safe_str_or_none(row.get("claim_subtype")) or "",
+            claim_subtype=subtype or "",
             risk_score=risk,
             risk_level=level,
-            top_denial_reasons=reasons,
+            top_denial_reasons=rendered_reasons,
         ))
     return out
 

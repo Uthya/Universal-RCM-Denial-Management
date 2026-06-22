@@ -1,4 +1,4 @@
-"""Category J — base claim features (12 features, no external deps)."""
+"""Category J — base claim features (11 features, no external deps)."""
 
 from __future__ import annotations
 
@@ -33,8 +33,4 @@ def compute(df: pd.DataFrame) -> pd.DataFrame:
         (b - a).days if a and b else 0 for a, b in zip(svc_from, svc_to)
     ]
     out["service_duration_days"] = out["service_duration_days"].astype("int32")
-    out["is_single_day_service"] = [
-        int(bool(a and b and a == b)) for a, b in zip(svc_from, svc_to)
-    ]
-    out["is_single_day_service"] = out["is_single_day_service"].astype("int8")
     return out

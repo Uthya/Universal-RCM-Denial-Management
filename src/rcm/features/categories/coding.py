@@ -1,4 +1,4 @@
-"""Category D — coding integrity (11 features)."""
+"""Category D — coding integrity (10 features; CR-104 retired has_invalid_modifier_combo)."""
 
 from __future__ import annotations
 
@@ -9,13 +9,6 @@ import pandas as pd
 from rcm.features.categories._helpers import _has_str, _safe_int
 from rcm.features.categories.availability import RefDataLookup
 from rcm.features.constants import NCCI_OVERRIDE_MODIFIERS
-
-
-# Modifier combos known to flag bundling oddness (small allowlist; expand as data warrants)
-_INVALID_COMBOS: frozenset[tuple[str, str]] = frozenset({
-    ("25", "59"),   # Often flagged when on same line
-    ("59", "25"),
-})
 
 
 def _is_likely_unbundled(cpts: list[str], modifiers: list[str],
@@ -53,24 +46,13 @@ def compute(
 
     has_mod = []
     mod_count = []
-    invalid_combo = []
     for mods in modifiers_col:
         ms = mods if isinstance(mods, list) else []
         ms = [m for m in ms if _has_str(m)]
         has_mod.append(int(bool(ms)))
         mod_count.append(len(ms))
-        bad = 0
-        for i in range(len(ms)):
-            for j in range(i + 1, len(ms)):
-                if (ms[i].upper(), ms[j].upper()) in _INVALID_COMBOS:
-                    bad = 1
-                    break
-            if bad:
-                break
-        invalid_combo.append(bad)
     out["has_modifier"] = pd.Series(has_mod, index=df.index).astype("int8")
     out["modifier_count_total"] = pd.Series(mod_count, index=df.index).astype("int8")
-    out["has_invalid_modifier_combo"] = pd.Series(invalid_combo, index=df.index).astype("int8")
 
     # Required modifier per CPT (from procedure_codes.metadata)
     required = []

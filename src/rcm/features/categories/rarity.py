@@ -91,21 +91,16 @@ def compute(df: pd.DataFrame, *, state: RarityState | None = None) -> pd.DataFra
         return [state.known(vocab_col, v) for v in col_data]
 
     payer_volume = vol(df.get("payer_canonical_name", pd.Series([None] * len(df))), "payer_canonical_name")
-    cpt_volume = vol(df.get("primary_cpt", pd.Series([None] * len(df))), "primary_cpt")
     dx_volume = vol(df.get("primary_dx", pd.Series([None] * len(df))), "primary_dx")
 
     payer_known = known(df.get("payer_canonical_name", pd.Series([None] * len(df))), "payer_canonical_name")
     cpt_known = known(df.get("primary_cpt", pd.Series([None] * len(df))), "primary_cpt")
     dx_known = known(df.get("primary_dx", pd.Series([None] * len(df))), "primary_dx")
-    bill_known = known(df.get("billing_provider_npi", pd.Series([None] * len(df))), "billing_provider_npi")
     rend_known = known(df.get("rendering_provider_npi", pd.Series([None] * len(df))), "rendering_provider_npi")
 
     # Mutual exclusion: only rare when seen-but-rare; unseen wins otherwise
     out["is_rare_payer"] = [
         int(k and 0 < v < RARE_PAYER_THRESHOLD) for k, v in zip(payer_known, payer_volume)
-    ]
-    out["is_rare_cpt"] = [
-        int(k and 0 < v < RARE_CPT_THRESHOLD) for k, v in zip(cpt_known, cpt_volume)
     ]
     out["is_rare_dx"] = [
         int(k and 0 < v < RARE_DX_THRESHOLD) for k, v in zip(dx_known, dx_volume)
@@ -114,13 +109,12 @@ def compute(df: pd.DataFrame, *, state: RarityState | None = None) -> pd.DataFra
     out["unseen_payer"] = [int(not k) for k in payer_known]
     out["unseen_cpt"] = [int(not k) for k in cpt_known]
     out["unseen_dx"] = [int(not k) for k in dx_known]
-    out["unseen_billing_provider"] = [int(not k) for k in bill_known]
     out["unseen_rendering_provider"] = [int(not k) for k in rend_known]
     out["unseen_any"] = [
-        int(any([up, uc, ud, ub, ur]))
-        for up, uc, ud, ub, ur in zip(
+        int(any([up, uc, ud, ur]))
+        for up, uc, ud, ur in zip(
             out["unseen_payer"], out["unseen_cpt"], out["unseen_dx"],
-            out["unseen_billing_provider"], out["unseen_rendering_provider"],
+            out["unseen_rendering_provider"],
         )
     ]
 

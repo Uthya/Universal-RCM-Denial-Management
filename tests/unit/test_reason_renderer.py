@@ -66,7 +66,7 @@ class TestRenderReason:
             ("prior_denials_with_payer",      REASON_HISTORY),
             ("provider_overall_denial_rate",  REASON_PROVIDER),
             ("billing_provider_npi_encoded",  REASON_PROVIDER),
-            ("unseen_billing_provider",       REASON_PROVIDER),
+            ("unseen_rendering_provider",     REASON_PROVIDER),
             ("total_charge_amount",           REASON_BILLING),
             ("line_count",                    REASON_BILLING),
             ("payer_cpt_denial_rate",         REASON_SIMILAR),
@@ -163,25 +163,39 @@ class TestRenderRiskFactors:
         assert rows[0]["impact"] == pytest.approx(0.40)
 
     def test_caps_at_top_k(self):
-        # Eleven distinct buckets — request 5, expect 5
+        # Eleven distinct buckets — request 5, expect 5.
+        # CR-093: ordering is now (actionability_tier, -impact) rather than
+        # purely impact-DESC. The cap-at-top_k contract is unchanged; only
+        # the cross-tier ordering rule changed.
         factors = [
-            _RF("auth_missing_when_required", 0.10),
-            _RF("missing_payer",              0.20),
-            _RF("primary_cpt_encoded",        0.30),
-            _RF("primary_dx_encoded",         0.40),
-            _RF("is_past_timely_filing",      0.50),
-            _RF("paperwork_missing_when_required", 0.60),
-            _RF("claims_in_last_30d",         0.70),
-            _RF("provider_overall_denial_rate", 0.80),
-            _RF("total_charge_amount",        0.90),
-            _RF("payer_cpt_denial_rate",      1.00),
-            _RF("avail_payer_policies",       1.10),
+            _RF("auth_missing_when_required", 0.10),  # authorization (tier 0)
+            _RF("missing_payer",              0.20),  # coverage      (tier 1)
+            _RF("primary_cpt_encoded",        0.30),  # procedure     (tier 0)
+            _RF("primary_dx_encoded",         0.40),  # diagnosis     (tier 0)
+            _RF("is_past_timely_filing",      0.50),  # timely_filing (tier 1)
+            _RF("paperwork_missing_when_required", 0.60),  # documentation (tier 0)
+            _RF("claims_in_last_30d",         0.70),  # history       (tier 2)
+            _RF("provider_overall_denial_rate", 0.80),  # provider    (tier 1)
+            _RF("total_charge_amount",        0.90),  # billing       (tier 1)
+            _RF("payer_cpt_denial_rate",      1.00),  # similar       (tier 2)
+            _RF("avail_payer_policies",       1.10),  # general       (tier 2)
         ]
         rows = render_risk_factors(factors, top_k=5)
         assert len(rows) == 5
-        # Sorted by impact desc
+        # CR-093 ordering rule: (tier, -impact). Within tier 0 (directly
+        # actionable: authorization, documentation, procedure, diagnosis)
+        # the four entries sort by impact DESC, so the top-5 fills with all
+        # four tier-0 buckets and then the highest-impact tier-1 bucket.
+        slugs = [r["feature"] for r in rows]
         impacts = [r["impact"] for r in rows]
-        assert impacts == sorted(impacts, reverse=True)
+        # Tier 0 buckets first, ordered by impact DESC:
+        #   documentation (0.60) > diagnosis (0.40) > procedure (0.30) > authorization (0.10)
+        # Then the highest tier-1 bucket:
+        #   billing (0.90) — beats provider 0.80, timely_filing 0.50, coverage 0.20
+        assert slugs == [
+            "documentation", "diagnosis", "procedure", "authorization", "billing",
+        ]
+        assert impacts == [0.6, 0.4, 0.3, 0.1, 0.9]
 
     def test_no_raw_feature_name_in_output(self):
         factors = [

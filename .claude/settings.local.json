@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(PYTHONPATH=src python -c ' *)",
-      "Bash(PYTHONPATH=src python scripts/bench_parser.py)"
+      "Bash(PYTHONPATH=src python scripts/bench_parser.py)",
+      "Bash(PYTHONPATH=src python -m pytest tests/unit/ -q --tb=line --no-header)",
+      "Bash(PYTHONPATH=src python _cr108_audit.py)",
+      "Bash(PYTHONPATH=src python *)",
+      "Bash(npm run *)",
+      "Bash(docker compose *)",
+      "Bash(docker exec *)"
     ]
   }
 }

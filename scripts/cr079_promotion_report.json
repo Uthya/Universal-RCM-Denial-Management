@@ -1,69 +1,11 @@
 {
-  "computed_at": "2026-06-17T07:08:43.284750+00:00",
+  "computed_at": "2026-06-18T07:24:43.248365+00:00",
   "applied": false,
   "force_shap": false,
   "variants": {
     "837P_healthcare": {
       "key": "837P_healthcare",
-      "status": "ok",
-      "baseline_held_out": {
-        "n": 7554,
-        "prevalence": 0.21141117288853586,
-        "roc_auc": 0.9992224067936681,
-        "pr_auc": 0.9975291976870535,
-        "f1": 0.9457040572792362,
-        "precision": 0.9031339031339032,
-        "recall": 0.9924859110832811,
-        "accuracy": 0.9759068043420704,
-        "brier_calibrated": 0.003313272027298808,
-        "brier_uncalibrated": 0.003946906886994839,
-        "positive_rate": 0.23232724384432088
-      },
-      "candidate_held_out": {
-        "n": 7554,
-        "prevalence": 0.21141117288853586,
-        "accuracy_at_threshold": 0.9698173153296267,
-        "precision_at_threshold": 0.8792243767313019,
-        "recall_at_threshold": 0.9937382592360676,
-        "f1_at_threshold": 0.9329805996472663,
-        "roc_auc": 0.999125647814766,
-        "pr_auc": 0.9971406296565529,
-        "brier_uncalibrated": 0.004157876130193472,
-        "brier_calibrated": 0.0033194920979440212,
-        "positive_rate": 0.23894625364045538
-      },
-      "checks": {
-        "d_roc_auc": {
-          "value": -9.675897890215612e-05,
-          "threshold": 0.001,
-          "passed": false
-        },
-        "d_pr_auc": {
-          "value": -0.0003885680305005801,
-          "threshold": 0.002,
-          "passed": false
-        },
-        "d_f1": {
-          "value": -0.012723457631969914,
-          "threshold": 0.005,
-          "passed": false
-        },
-        "precision": {
-          "value": 0.8792243767313019,
-          "threshold": 0.85,
-          "passed": true
-        },
-        "brier_drift": {
-          "value": 0.18773196387029312,
-          "threshold": 5.0,
-          "passed": true
-        },
-        "shap_overlap_pct": {
-          "value": 70.0,
-          "threshold": 50.0,
-          "passed": true
-        }
-      },
+      "status": "no_tune",
       "passed": false
     },
     "837D_dental": {
@@ -83,41 +25,41 @@
         "positive_rate": 0.30962343096234307
       },
       "candidate_held_out": {
-        "n": 956,
-        "prevalence": 0.39748953974895396,
-        "accuracy_at_threshold": 0.7928870292887029,
-        "precision_at_threshold": 0.941747572815534,
-        "recall_at_threshold": 0.5105263157894737,
-        "f1_at_threshold": 0.6621160409556314,
-        "roc_auc": 0.7958036366959066,
-        "pr_auc": 0.7857697143462572,
-        "brier_uncalibrated": 0.15353868901729584,
-        "brier_calibrated": 0.1523263305425644,
-        "positive_rate": 0.21548117154811716
+        "n": 2981,
+        "prevalence": 0.40154310634015433,
+        "accuracy_at_threshold": 0.7839651123783965,
+        "precision_at_threshold": 0.9001447178002895,
+        "recall_at_threshold": 0.5196324143692564,
+        "f1_at_threshold": 0.6588983050847458,
+        "roc_auc": 0.7890271736890806,
+        "pr_auc": 0.7736972937874513,
+        "brier_uncalibrated": 0.1550058126449585,
+        "brier_calibrated": 0.15156574547290802,
+        "positive_rate": 0.23180140892318013
       },
       "checks": {
         "d_roc_auc": {
-          "value": -0.004776589912280582,
+          "value": -0.011553052919106577,
           "threshold": 0.005,
           "passed": false
         },
         "d_pr_auc": {
-          "value": -0.002093626569384832,
+          "value": -0.014166047128190695,
           "threshold": 0.01,
           "passed": false
         },
         "d_f1": {
-          "value": -0.0035644324171496544,
+          "value": -0.00678216828803524,
           "threshold": 0.01,
           "passed": false
         },
         "precision": {
-          "value": 0.941747572815534,
+          "value": 0.9001447178002895,
           "threshold": 0.85,
           "passed": true
         },
         "brier_drift": {
-          "value": 1.698667549037964,
+          "value": 1.1908729486807308,
           "threshold": 10.0,
           "passed": true
         },
@@ -131,68 +73,9 @@
     },
     "837I_home_care": {
       "key": "837I_home_care",
-      "status": "ok",
-      "baseline_held_out": {
-        "n": 470,
-        "prevalence": 0.39787234042553193,
-        "roc_auc": 0.9111694790347877,
-        "pr_auc": 0.9112259260875339,
-        "f1": 0.8635097493036211,
-        "precision": 0.9011627906976745,
-        "recall": 0.8288770053475936,
-        "accuracy": 0.8957446808510638,
-        "brier_calibrated": 0.0780579075217247,
-        "brier_uncalibrated": 0.07644779235124588,
-        "positive_rate": 0.3659574468085106
-      },
-      "candidate_held_out": {
-        "n": 470,
-        "prevalence": 0.39787234042553193,
-        "accuracy_at_threshold": 0.9212765957446809,
-        "precision_at_threshold": 0.987012987012987,
-        "recall_at_threshold": 0.8128342245989305,
-        "f1_at_threshold": 0.8914956011730205,
-        "roc_auc": 0.9151471060637555,
-        "pr_auc": 0.9145440509304509,
-        "brier_uncalibrated": 0.07973968237638474,
-        "brier_calibrated": 0.07444453984498978,
-        "positive_rate": 0.3276595744680851
-      },
-      "checks": {
-        "d_roc_auc": {
-          "value": 0.003977627028967756,
-          "threshold": 0.003,
-          "passed": true
-        },
-        "d_pr_auc": {
-          "value": 0.0033181248429169363,
-          "threshold": 0.008,
-          "passed": false
-        },
-        "d_f1": {
-          "value": 0.027985851869399392,
-          "threshold": 0.008,
-          "passed": true
-        },
-        "precision": {
-          "value": 0.987012987012987,
-          "threshold": 0.85,
-          "passed": true
-        },
-        "brier_drift": {
-          "value": -4.6290860099334195,
-          "threshold": 10.0,
-          "passed": true
-        },
-        "shap_overlap_pct": {
-          "value": 60.0,
-          "threshold": 50.0,
-          "passed": true
-        }
-      },
+      "status": "no_tune",
       "passed": false
     }
   },
-  "overall_passed": false,
-  "selected": []
+  "overall_passed": false
 }

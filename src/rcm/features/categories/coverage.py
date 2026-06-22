@@ -1,4 +1,4 @@
-"""Category A — coverage / eligibility (10 features)."""
+"""Category A — coverage / eligibility (8 features; CR-104 retired is_secondary_claim, cross_payer_count_for_patient)."""
 
 from __future__ import annotations
 
@@ -41,12 +41,10 @@ def compute(
     ref: RefDataLookup | None = None,
     payer_overall_denial: dict[int, float] | None = None,
     payer_taxonomy_encoded: pd.Series | None = None,
-    cross_payer_count: dict[int, int] | None = None,
 ) -> pd.DataFrame:
     out = pd.DataFrame(index=df.index)
     ref = ref or RefDataLookup()
     payer_overall_denial = payer_overall_denial or {}
-    cross_payer_count = cross_payer_count or {}
 
     ages = [
         _age_at(dob, svc)
@@ -92,10 +90,9 @@ def compute(
     out["cob_position_encoded"] = pd.Series(
         [_COB_MAP.get(v if _has_str(v) else None, 0) for v in cob_raw], index=df.index,
     ).astype("int8")
-    out["is_secondary_claim"] = (out["cob_position_encoded"] > 1).astype("int8")
-    # has_secondary_payer: same dataset doesn't have a per-claim secondary
-    # subscriber roll-up; use cob>1 as a proxy
-    out["has_secondary_payer"] = out["is_secondary_claim"].astype("int8")
+    # has_secondary_payer derived from cob_position_encoded>1 (no separate
+    # subscriber roll-up in current data)
+    out["has_secondary_payer"] = (out["cob_position_encoded"] > 1).astype("int8")
 
     # MV-backed: payer_overall_denial_rate
     payer_ids = df.get("payer_id", pd.Series([None] * len(df)))
@@ -109,12 +106,5 @@ def compute(
         out["payer_taxonomy_encoded"] = payer_taxonomy_encoded.astype("float32").reindex(df.index, fill_value=0.0)
     else:
         out["payer_taxonomy_encoded"] = pd.Series(0.0, index=df.index, dtype="float32")
-
-    # Cross-payer count comes from MV (patient × distinct payer history)
-    patient_ids = df.get("patient_id", pd.Series([None] * len(df)))
-    out["cross_payer_count_for_patient"] = pd.Series(
-        [int(cross_payer_count.get(pid, 0)) if pid is not None else 0 for pid in patient_ids],
-        index=df.index,
-    ).astype("int16")
 
     return out

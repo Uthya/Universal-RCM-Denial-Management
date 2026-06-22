@@ -1,4 +1,4 @@
-"""Category M — healthcare-variant features (6 columns).
+"""Category M — healthcare-variant features (4 columns; CR-104 retired surgery_global_period_active + cob_indicator).
 
 See FEATURE_COLUMNS_HEALTHCARE tail in registry.py for the exact list.
 """
@@ -75,10 +75,9 @@ def _is_consultation(cpt: Any) -> int:
 def compute(
     df: pd.DataFrame,
     *,
-    cob_indicator: pd.Series | None = None,
     history_snapshot: PatientHistorySnapshot | None = None,
 ) -> pd.DataFrame:
-    """Compute the 6 healthcare-variant columns."""
+    """Compute the 4 healthcare-variant columns."""
     out = pd.DataFrame(index=df.index)
     cpts = df.get("primary_cpt", pd.Series([None] * len(df)))
     poss = df.get("primary_pos", pd.Series([None] * len(df)))
@@ -89,21 +88,6 @@ def compute(
         [_is_telehealth(p, m if isinstance(m, list) else []) for p, m in zip(poss, mods)],
         index=df.index,
     ).astype("int8")
-
-    # surgery_global_period_active: needs procedure_codes.metadata + patient history.
-    # Default 0 when ref data is missing.
-    out["surgery_global_period_active"] = pd.Series(0, index=df.index, dtype="int8")
-
     out["is_preventive_visit"] = pd.Series([_is_preventive(c) for c in cpts], index=df.index).astype("int8")
     out["is_consultation"] = pd.Series([_is_consultation(c) for c in cpts], index=df.index).astype("int8")
-
-    if cob_indicator is not None:
-        out["cob_indicator"] = cob_indicator.reindex(df.index, fill_value=0).astype("int8")
-    else:
-        # Fallback: derive from subscriber_cob (P/S/T)
-        from rcm.features.categories._helpers import _has_str as _hs
-        out["cob_indicator"] = pd.Series(
-            [int(_hs(v) and str(v).upper() in ("S", "T")) for v in df.get("subscriber_cob", pd.Series([None] * len(df)))],
-            index=df.index,
-        ).astype("int8")
     return out

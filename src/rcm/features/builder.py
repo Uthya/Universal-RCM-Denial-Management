@@ -30,6 +30,7 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+import numpy as np
 import pandas as pd
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -94,6 +95,140 @@ _VARIANT_DISPATCH = {
 logger = logging.getLogger(__name__)
 
 
+# CR-107: leakage-safe denial-rate features. Each entry maps an output column
+# to the cohort-key columns. At training time we recompute these per-row using
+# only PRIOR-dated train rows (strict-< on service_from_date), overriding the
+# global-MV values that joint.compute / provider.compute / coverage.compute
+# would otherwise inject. Predict time uses the global MV unchanged.
+_LEAKAGE_SAFE_KEYS: list[tuple[str, tuple[str, ...]]] = [
+    ("payer_cpt_denial_rate",          ("payer_id", "primary_cpt")),
+    ("payer_dx_denial_rate",           ("payer_id", "primary_dx")),
+    ("payer_pos_denial_rate",          ("payer_id", "primary_pos")),
+    ("cpt_dx_denial_rate",             ("primary_cpt", "primary_dx")),
+    ("provider_payer_denial_rate",     ("billing_provider_id", "payer_id")),
+    ("payer_provider_denial_rate",     ("billing_provider_id", "payer_id")),
+    ("provider_cpt_denial_rate",       ("billing_provider_id", "primary_cpt")),
+    ("provider_cpt_denial_rate_joint", ("billing_provider_id", "primary_cpt")),
+    ("payer_overall_denial_rate",      ("payer_id",)),
+    ("provider_overall_denial_rate",   ("billing_provider_id",)),
+]
+_LEAKAGE_SAFE_FEATURE_NAMES: tuple[str, ...] = tuple(f for f, _ in _LEAKAGE_SAFE_KEYS)
+
+
+def compute_leakage_safe_denial_rates(
+    query_df: pd.DataFrame,
+    train_df: pd.DataFrame,
+    train_y: np.ndarray | pd.Series,
+) -> pd.DataFrame:
+    """Per-row leakage-safe denial rates for the 8 MV-backed features.
+
+    Each ``query_df`` row gets a feature value equal to the average ``train_y``
+    over ``train_df`` rows that share the cohort key AND have a strictly
+    earlier ``service_from_date``. Rows with any missing key value (or with
+    no qualifying prior rows) receive 0.0 — matching the global-MV path's
+    behaviour for unknown keys.
+
+    The query_df row's OWN label is excluded automatically via strict-<.
+    Future-dated rows are excluded automatically. Validation / held-out rows
+    are excluded by passing ONLY training rows as ``train_df``.
+
+    Returns a DataFrame indexed identically to ``query_df`` with 10 columns
+    (the 8 distinct features plus the 2 mirrored Cat-I aliases of the same
+    underlying aggregates).
+    """
+    if len(query_df) == 0:
+        return pd.DataFrame(index=query_df.index,
+                            columns=_LEAKAGE_SAFE_FEATURE_NAMES, dtype="float32")
+    if len(train_df) == 0:
+        return pd.DataFrame(
+            0.0, index=query_df.index,
+            columns=list(_LEAKAGE_SAFE_FEATURE_NAMES), dtype="float32",
+        )
+
+    y_arr = np.asarray(train_y).astype("float64").ravel()
+    if len(y_arr) != len(train_df):
+        raise ValueError(
+            f"train_y length ({len(y_arr)}) must match train_df rows ({len(train_df)})"
+        )
+
+    train_df = train_df.copy()
+    train_df["_y"] = y_arr
+    if "service_from_date" not in train_df or "service_from_date" not in query_df:
+        raise KeyError("compute_leakage_safe_denial_rates: service_from_date required")
+
+    # Normalize dates to pandas datetime for merge_asof
+    train_df = train_df.copy()
+    train_df["_date"] = pd.to_datetime(train_df["service_from_date"], errors="coerce")
+    query_df_norm = query_df.copy()
+    query_df_norm["_date"] = pd.to_datetime(query_df_norm["service_from_date"], errors="coerce")
+    query_df_norm["_orig_idx"] = np.arange(len(query_df_norm))
+
+    out = pd.DataFrame(index=query_df.index, dtype="float32")
+
+    # Group features by key tuple so each unique key set is computed once
+    keys_to_features: dict[tuple[str, ...], list[str]] = {}
+    for fname, keys in _LEAKAGE_SAFE_KEYS:
+        keys_to_features.setdefault(keys, []).append(fname)
+
+    for keys, fnames in keys_to_features.items():
+        keys_list = list(keys)
+        # Required columns
+        needed = set(keys_list) | {"_date", "_y"}
+        if not needed.issubset(set(train_df.columns)):
+            for fname in fnames:
+                out[fname] = np.zeros(len(query_df), dtype="float32")
+            continue
+        # Drop rows with NaN in any key column from the train aggregation —
+        # they contribute nothing (MV path uses these as default-0 anyway).
+        train_valid = train_df.dropna(subset=keys_list + ["_date"]).copy()
+        if train_valid.empty:
+            for fname in fnames:
+                out[fname] = np.zeros(len(query_df), dtype="float32")
+            continue
+        # Cast key columns to a stable, non-NaN-tolerant form for grouping
+        for k in keys_list:
+            if train_valid[k].dtype.kind in "fiu":
+                train_valid[k] = train_valid[k].astype("Int64").astype(str)
+            else:
+                train_valid[k] = train_valid[k].astype(str)
+        # Aggregate by (keys, date). cum_y/cum_n at each (key, date) row carry
+        # totals INCLUDING the rows on that date — the strict-< filter is
+        # applied at lookup time by merge_asof(allow_exact_matches=False).
+        agg = (train_valid.groupby(keys_list + ["_date"], sort=True, dropna=False)
+                          .agg(y_sum=("_y", "sum"), y_count=("_y", "count"))
+                          .reset_index())
+        agg["cum_y"] = agg.groupby(keys_list, sort=False, dropna=False)["y_sum"].cumsum()
+        agg["cum_n"] = agg.groupby(keys_list, sort=False, dropna=False)["y_count"].cumsum()
+        # Build the query side in the same stable form
+        qdf = query_df_norm[keys_list + ["_date", "_orig_idx"]].copy()
+        for k in keys_list:
+            col = qdf[k]
+            if col.dtype.kind in "fiu":
+                qdf[k] = col.astype("Int64").astype(str)
+            else:
+                qdf[k] = col.astype(str)
+        # merge_asof needs sorted-by-on on both sides
+        agg_sorted = agg.sort_values("_date")
+        qdf_sorted = qdf.sort_values("_date")
+        merged = pd.merge_asof(
+            qdf_sorted, agg_sorted[keys_list + ["_date", "cum_y", "cum_n"]],
+            on="_date", by=keys_list, direction="backward",
+            allow_exact_matches=False,  # strict-< on _date
+        )
+        with np.errstate(divide="ignore", invalid="ignore"):
+            cum_n = merged["cum_n"].fillna(0).to_numpy(dtype="float64")
+            cum_y = merged["cum_y"].fillna(0).to_numpy(dtype="float64")
+            rate = np.where(cum_n > 0, cum_y / np.maximum(cum_n, 1), 0.0)
+        # Restore original query order
+        merged = merged.assign(_safe=rate.astype("float32"))
+        merged = merged.sort_values("_orig_idx")
+        values = merged["_safe"].to_numpy()
+        for fname in fnames:
+            out[fname] = values
+
+    return out
+
+
 @dataclass
 class FeatureArtifacts:
     """Everything produced at training time that the predictor needs later."""
@@ -117,6 +252,8 @@ class FeatureBuilder:
     # ------------------------------------------------------------------
     async def fit_transform(
         self, session: AsyncSession, df: pd.DataFrame, y: pd.Series,
+        *,
+        safe_rates: pd.DataFrame | None = None,
     ) -> FeatureArtifacts:
         # CR-088: populate reference-data lookup from DB if not already loaded.
         # If the caller passed a pre-loaded ref_lookup (predict-time bundle
@@ -159,6 +296,7 @@ class FeatureBuilder:
             joint_snap=joint_snap,
             encoded_frame=enc_frame,
             fit_time=True,
+            safe_rates=safe_rates,
         )
 
         return FeatureArtifacts(
@@ -169,7 +307,11 @@ class FeatureBuilder:
     # ------------------------------------------------------------------
     # Prediction entry point
     # ------------------------------------------------------------------
-    async def transform(self, session: AsyncSession, df: pd.DataFrame) -> pd.DataFrame:
+    async def transform(
+        self, session: AsyncSession, df: pd.DataFrame,
+        *,
+        safe_rates: pd.DataFrame | None = None,
+    ) -> pd.DataFrame:
         if self.encoder is None:
             raise RuntimeError(
                 "FeatureBuilder.transform called before fit_transform; "
@@ -193,6 +335,7 @@ class FeatureBuilder:
             joint_snap=joint_snap,
             encoded_frame=enc_frame,
             fit_time=False,
+            safe_rates=safe_rates,
         )
         return X
 
@@ -281,6 +424,7 @@ class FeatureBuilder:
         joint_snap: JointEncoderSnapshot,
         encoded_frame: pd.DataFrame,
         fit_time: bool,
+        safe_rates: pd.DataFrame | None = None,
     ) -> pd.DataFrame:
         # Pull common encoded-column slices to feed Cat A / C / D / H
         def _enc(col: str) -> pd.Series:
@@ -343,6 +487,16 @@ class FeatureBuilder:
              avail_cols, var_cols],
             axis=1,
         )
+
+        # CR-107: override the 8 MV-backed denial-rate columns with leakage-safe
+        # per-row values when safe_rates is provided. The MV-derived columns
+        # above stay as the source of truth at predict time (production); only
+        # train/val/held during training pass safe_rates.
+        if safe_rates is not None and len(safe_rates) > 0:
+            aligned = safe_rates.reindex(df.index)
+            for col in _LEAKAGE_SAFE_FEATURE_NAMES:
+                if col in all_parts.columns and col in aligned.columns:
+                    all_parts[col] = aligned[col].astype("float32").fillna(0.0)
 
         expected = list(get_feature_columns(
             self.service_variant, self.claim_subtype, fall_back_to_global=True,

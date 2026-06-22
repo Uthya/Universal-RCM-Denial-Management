@@ -1,4 +1,4 @@
-"""Category H — provider profile (10 features).
+"""Category H — provider profile (9 features; CR-104 retired billing_rendering_same_npi).
 
 Backed by mv_provider_denial_profiles + mv_provider_payer_denial_rate +
 mv_provider_cpt_denial_rate. Loader catches missing-MV gracefully.
@@ -99,8 +99,6 @@ def compute(
     out = pd.DataFrame(index=df.index)
     snap = snapshot or ProviderProfileSnapshot()
 
-    bill_npi = df.get("billing_provider_npi", pd.Series([None] * len(df)))
-    rend_npi = df.get("rendering_provider_npi", pd.Series([None] * len(df)))
     ref_pid = df.get("referring_provider_id", pd.Series([None] * len(df)))
     bill_id = df.get("billing_provider_id", pd.Series([None] * len(df)))
     payer_id = df.get("payer_id", pd.Series([None] * len(df)))
@@ -113,10 +111,6 @@ def compute(
                                               else pd.Series(0.0, index=df.index)).reindex(df.index, fill_value=0.0).astype("float32")
     out["referring_provider_present"] = pd.Series(
         [int(p is not None) for p in ref_pid], index=df.index,
-    ).astype("int8")
-    out["billing_rendering_same_npi"] = pd.Series(
-        [int(_has_str(b) and _has_str(r) and str(b) == str(r))
-         for b, r in zip(bill_npi, rend_npi)], index=df.index,
     ).astype("int8")
     out["provider_specialty_taxonomy_encoded"] = (provider_taxonomy_encoded if provider_taxonomy_encoded is not None
                                                    else pd.Series(0.0, index=df.index)).reindex(df.index, fill_value=0.0).astype("float32")

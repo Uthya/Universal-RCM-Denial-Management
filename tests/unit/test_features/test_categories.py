@@ -122,11 +122,11 @@ class TestBase:
     def test_base_features(self, synth_df):
         b = base.compute(synth_df)
         assert set(b.columns) >= {"total_charge_amount", "line_count", "diagnosis_count",
-                                   "service_month", "weekend_service", "is_single_day_service"}
+                                   "service_month", "weekend_service", "service_duration_days"}
         assert b.loc[1, "total_charge_amount"] == 150.0
         assert b.loc[2, "line_count"] == 2
         assert b.loc[1, "service_month"] == 6
-        assert b.loc[1, "is_single_day_service"] == 1
+        assert b.loc[1, "service_duration_days"] == 0
 
 
 class TestCoverage:
@@ -141,7 +141,7 @@ class TestCoverage:
         c = coverage.compute(synth_df)
         assert c.loc[1, "cob_position_encoded"] == 1   # P
         assert c.loc[2, "cob_position_encoded"] == 2   # S
-        assert c.loc[2, "is_secondary_claim"] == 1
+        assert c.loc[2, "has_secondary_payer"] == 1
 
 
 class TestAuthorization:
@@ -187,8 +187,7 @@ class TestCoding:
         c = coding.compute(synth_df)
         assert c.loc[1, "modifier_count_total"] == 1
         assert c.loc[2, "modifier_count_total"] == 2
-        # 25+59 is in the invalid combo set
-        assert c.loc[2, "has_invalid_modifier_combo"] == 1
+        assert c.loc[1, "has_modifier"] == 1
 
     def test_replacement_claim(self, synth_df):
         c = coding.compute(synth_df)

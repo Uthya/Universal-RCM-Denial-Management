@@ -27,7 +27,11 @@ from sklearn.model_selection import StratifiedKFold, cross_val_predict, train_te
 from sqlalchemy.ext.asyncio import AsyncSession
 from xgboost import XGBClassifier
 
-from rcm.features.builder import FeatureArtifacts, FeatureBuilder
+from rcm.features.builder import (
+    FeatureArtifacts,
+    FeatureBuilder,
+    compute_leakage_safe_denial_rates,
+)
 from rcm.features.constants import (
     LOW_PROB_CUTOFF,
     PRECISION_FLOOR,
@@ -150,16 +154,30 @@ async def train_variant(
     y_val    = y_all[idx_val]
     y_held   = y_all[idx_held]
 
+    # CR-107: compute leakage-safe denial rates from TRAIN labels for every
+    # row in train+val+held. Each row's value uses only EARLIER-DATED TRAIN
+    # rows (strict-< on service_from_date). Production transform() callers
+    # do NOT pass safe_rates and continue to use the global MV.
+    safe_rates_all = compute_leakage_safe_denial_rates(
+        df, df_train, pd.Series(y_train, index=df_train.index),
+    )
+    safe_rates_train = safe_rates_all.loc[df_train.index]
+    safe_rates_val   = safe_rates_all.loc[df_val.index]
+    safe_rates_held  = safe_rates_all.loc[df_held.index]
+
     # Fit FB on TRAIN only — encoder vocab + rarity_state come from train rows
     builder = FeatureBuilder(service_variant=service_variant, claim_subtype=claim_subtype)
     artifacts = await builder.fit_transform(
         session, df_train, pd.Series(y_train, index=df_train.index),
+        safe_rates=safe_rates_train,
     )
     X_train = artifacts.features.astype("float32")
 
-    # Transform val + held with the fitted FB
-    X_val  = (await builder.transform(session, df_val)).astype("float32")
-    X_held = (await builder.transform(session, df_held)).astype("float32")
+    # Transform val + held with the fitted FB (with leakage-safe rates)
+    X_val  = (await builder.transform(session, df_val,
+                                       safe_rates=safe_rates_val)).astype("float32")
+    X_held = (await builder.transform(session, df_held,
+                                       safe_rates=safe_rates_held)).astype("float32")
 
     # Class balance for XGBoost
     spw = (1 - y_train).sum() / max(1, int(y_train.sum()))

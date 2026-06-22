@@ -74,6 +74,38 @@ REASON_BUCKETS: tuple[tuple[str, str, str], ...] = (
 )
 
 
+# CR-093: actionability tier for each bucket slug. Used by render_risk_factors
+# as the PRIMARY sort key so the first-displayed reason is the most actionable
+# one, not the largest-SHAP one. Within each tier the secondary key is impact
+# DESC, preserving the original SHAP-magnitude ranking.
+#
+# Tier 0 — DIRECTLY ACTIONABLE: the user can take a concrete action (obtain
+#   authorization, fix the modifier, attach paperwork, add a more specific
+#   diagnosis) that meaningfully changes the resubmission outcome.
+# Tier 1 — PARTIALLY ACTIONABLE: the user can verify or correct something
+#   (billing amount, coverage eligibility, timely-filing appeal, taxonomy)
+#   but the action is often confirmation rather than substantive fix.
+# Tier 2 — INFORMATIONAL ONLY: aggregate / historical patterns the user
+#   cannot reverse. Useful as risk context, not as the top priority for
+#   the operator's fix queue.
+_ACTIONABILITY_TIER: dict[str, int] = {
+    # Tier 0 — Directly actionable
+    "authorization": 0,
+    "documentation": 0,
+    "procedure":     0,
+    "diagnosis":     0,
+    # Tier 1 — Partially actionable
+    "timely_filing": 1,
+    "coverage":      1,
+    "billing":       1,
+    "provider":      1,
+    # Tier 2 — Informational only
+    "history":       2,
+    "similar":       2,
+    "general":       2,
+}
+
+
 # ---------------------------------------------------------------------------
 # Variant-aware sentence overrides (CR-078A).
 #
@@ -91,6 +123,36 @@ _SUBTYPE_NORMALISE: dict[str, str] = {
     "inpatient":  "institutional_other",
     "hospice":    "institutional_other",
 }
+
+# CR-092 Issue 1: variant-aware BUCKET overrides.
+#
+# The default _FEATURE_TO_BUCKET map is variant-agnostic. For a few features
+# the semantic meaning of the value depends on the care setting:
+#
+#   total_units   — 837P healthcare: number of CPT services (billing artifact)
+#                   837I home_care:  number of 15-minute care increments
+#                                    (frequency / utilization signal — the
+#                                    intrinsic driver of CARC 119 denials)
+#                   837P therapy:    therapy-session unit count (same idea)
+#   line_count    — same shape: many lines on a home-health/therapy claim
+#                   indicates care frequency.
+#   units_per_line — derived; inherits home_care/therapy semantics.
+#
+# Without this override the audit found home_care CARC 119 denials surfaced
+# as "Billing" instead of "Claim History" because total_units dominated SHAP
+# but was bucketed under _BILL universally. The fix is purely cosmetic at
+# the bucket level — SHAP, prediction score, threshold, and the set of
+# surfaced features are all unchanged. Only the slug+title+sentence for
+# specific (feature, variant_subtype) pairs is re-routed to history.
+_VARIANT_BUCKET_OVERRIDES: dict[tuple[str, str], tuple[str, str, str]] = {
+    ("total_units",    "home_care"): _HIST,
+    ("total_units",    "therapy"):   _HIST,
+    ("line_count",     "home_care"): _HIST,
+    ("line_count",     "therapy"):   _HIST,
+    ("units_per_line", "home_care"): _HIST,
+    ("units_per_line", "therapy"):   _HIST,
+}
+
 
 _VARIANT_OVERRIDES: dict[tuple[str, str], str] = {
     # --- Documentation reads quite differently per care setting ---
@@ -140,7 +202,6 @@ _FEATURE_TO_BUCKET: dict[str, tuple[str, str, str]] = {
     "service_day_of_week":       _BILL,
     "weekend_service":           _BILL,
     "service_duration_days":     _BILL,
-    "is_single_day_service":     _BILL,
 
     # --- Category A — coverage / eligibility ---
     "patient_age_at_service":             _COV,
@@ -148,11 +209,9 @@ _FEATURE_TO_BUCKET: dict[str, tuple[str, str, str]] = {
     "patient_age_vs_procedure_valid":     _COV,
     "patient_gender_vs_procedure_valid":  _COV,
     "cob_position_encoded":               _COV,
-    "is_secondary_claim":                 _COV,
     "has_secondary_payer":                _COV,
     "payer_overall_denial_rate":          _COV,
     "payer_taxonomy_encoded":             _COV,
-    "cross_payer_count_for_patient":      _COV,
 
     # --- Category B — authorization ---
     "has_prior_authorization":          _AUTH,
@@ -178,7 +237,6 @@ _FEATURE_TO_BUCKET: dict[str, tuple[str, str, str]] = {
     "modifier_count_total":             _PROC,
     "has_required_modifier_for_cpt":    _PROC,
     "required_modifier_present":        _PROC,
-    "has_invalid_modifier_combo":       _PROC,
     "is_likely_unbundled":              _PROC,
     "cpt_pos_alignment_score":          _PROC,
     "frequency_code_encoded":           _PROC,
@@ -216,7 +274,6 @@ _FEATURE_TO_BUCKET: dict[str, tuple[str, str, str]] = {
     "billing_provider_npi_encoded":         _PROV,
     "rendering_provider_npi_encoded":       _PROV,
     "referring_provider_present":           _PROV,
-    "billing_rendering_same_npi":           _PROV,
     "provider_specialty_taxonomy_encoded":  _PROV,
     "provider_overall_denial_rate":         _PROV,
     "provider_payer_denial_rate":           _PROV,
@@ -241,12 +298,10 @@ _FEATURE_TO_BUCKET: dict[str, tuple[str, str, str]] = {
 
     # --- Category L — rarity / unseen / missing ---
     "is_rare_payer":               _COV,
-    "is_rare_cpt":                 _PROC,
     "is_rare_dx":                  _DX,
     "unseen_payer":                _COV,
     "unseen_cpt":                  _PROC,
     "unseen_dx":                   _DX,
-    "unseen_billing_provider":     _PROV,
     "unseen_rendering_provider":   _PROV,
     "unseen_any":                  _GEN,
     "missing_payer":               _COV,
@@ -265,10 +320,8 @@ _FEATURE_TO_BUCKET: dict[str, tuple[str, str, str]] = {
     # --- Category M — 837P / healthcare ---
     "e_and_m_level":                   _PROC,
     "is_telehealth":                   _PROC,
-    "surgery_global_period_active":    _PROC,
     "is_preventive_visit":             _PROC,
     "is_consultation":                 _PROC,
-    "cob_indicator":                   _COV,
 
     # --- Category M — 837P / therapy ---
     "discipline_modifier_encoded":     _PROC,
@@ -351,8 +404,17 @@ def render_reason(
     REASON_GENERAL so a raw FB name can never surface in the UI even if
     the mapping drifts behind the registry.
     """
-    slug, title, default = _FEATURE_TO_BUCKET.get(feature_name, _GEN)
     sub = _normalise_subtype(claim_subtype)
+    # CR-092 Issue 1: variant-aware bucket override. Re-routes specific
+    # (feature, variant_subtype) pairs to a different bucket BEFORE the
+    # default lookup, so eg. ``total_units`` on home_care/therapy buckets to
+    # ``history`` (frequency) instead of ``billing``.
+    bucket: tuple[str, str, str]
+    if sub is not None and (feature_name, sub) in _VARIANT_BUCKET_OVERRIDES:
+        bucket = _VARIANT_BUCKET_OVERRIDES[(feature_name, sub)]
+    else:
+        bucket = _FEATURE_TO_BUCKET.get(feature_name, _GEN)
+    slug, title, default = bucket
     if sub is not None:
         override = _VARIANT_OVERRIDES.get((slug, sub))
         if override is not None:
@@ -401,7 +463,20 @@ def render_risk_factors(
                 "direction": "increases denial risk",
             }
 
-    rows = sorted(by_slug.values(), key=lambda r: r["impact"], reverse=True)
+    # CR-093: prioritize by actionability tier first, then by SHAP impact
+    # within tier. Tier 0 (directly actionable: authorization, documentation,
+    # procedure, diagnosis) ALWAYS surfaces above Tier 1 (partially actionable)
+    # and Tier 2 (informational). The first-displayed reason is therefore the
+    # most actionable bucket present in the SHAP-positive set, not necessarily
+    # the largest-SHAP bucket. The raw impact magnitude is preserved on each
+    # row so callers can still see how the model weighted each bucket.
+    rows = sorted(
+        by_slug.values(),
+        key=lambda r: (
+            _ACTIONABILITY_TIER.get(r["feature"], 2),  # primary: tier (0 / 1 / 2)
+            -r["impact"],                                # secondary: impact DESC
+        ),
+    )
     return rows[:top_k]
 
 

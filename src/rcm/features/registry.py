@@ -99,7 +99,7 @@ _AVL = PredictionAvailability
 _RISK = LeakageRisk
 
 
-# Category J — base claim features (12 features)
+# Category J — base claim features (11 features; CR-104 retired is_single_day_service)
 _BASE = (
     _F("total_charge_amount",       _CAT.BASE, _SRC.CLAIM,   "float", "CLM02 total claim charge"),
     _F("total_billed_amount",       _CAT.BASE, _SRC.CLAIM,   "float", "sum of line.billed_amount"),
@@ -112,7 +112,6 @@ _BASE = (
     _F("service_day_of_week",       _CAT.BASE, _SRC.CLAIM,   "int",   "0=Mon..6=Sun; 0 if null"),
     _F("weekend_service",           _CAT.BASE, _SRC.DERIVED, "bool",  "service_day_of_week>=5"),
     _F("service_duration_days",     _CAT.BASE, _SRC.CLAIM,   "int",   "(service_to-service_from).days; 0 if either null"),
-    _F("is_single_day_service",     _CAT.BASE, _SRC.DERIVED, "bool",  "service_from==service_to"),
 )
 
 
@@ -125,14 +124,11 @@ _COVERAGE = (
     _F("patient_gender_vs_procedure_valid",_CAT.COVERAGE, _SRC.REFERENCE_DATA, "bool", "gender matches procedure_codes.metadata restriction; default 1",
         availability=_AVL.REQUIRES_REF_DATA, default_value=1, requires_ref_table="procedure_codes"),
     _F("cob_position_encoded",          _CAT.COVERAGE, _SRC.SUBSCRIBER, "int", "0:none 1:P 2:S 3:T"),
-    _F("is_secondary_claim",            _CAT.COVERAGE, _SRC.DERIVED, "bool", "cob_position_encoded>1"),
     _F("has_secondary_payer",           _CAT.COVERAGE, _SRC.SUBSCRIBER, "bool", "exists subscriber with COB S or T"),
     _F("payer_overall_denial_rate",     _CAT.COVERAGE, _SRC.MATERIALIZED_VIEW, "float", "mv_payer_denial_rates smoothed",
         leakage_risk=_RISK.MEDIUM),
     _F("payer_taxonomy_encoded",        _CAT.COVERAGE, _SRC.PAYER,   "float", "target-encoded payer.payer_taxonomy",
         leakage_risk=_RISK.MEDIUM),
-    _F("cross_payer_count_for_patient", _CAT.COVERAGE, _SRC.MATERIALIZED_VIEW, "int", "distinct payers in patient history (strict-<)",
-        availability=_AVL.REQUIRES_HISTORY),
 )
 
 
@@ -177,7 +173,6 @@ _CODING = (
         availability=_AVL.REQUIRES_REF_DATA, requires_ref_table="procedure_codes"),
     _F("required_modifier_present",     _CAT.CODING, _SRC.DERIVED, "bool", "if not required default 1 else check the specific modifier is present",
         availability=_AVL.REQUIRES_REF_DATA, default_value=1, requires_ref_table="procedure_codes"),
-    _F("has_invalid_modifier_combo",    _CAT.CODING, _SRC.CLAIM, "bool", "check known invalid pairs"),
     _F("is_likely_unbundled",           _CAT.CODING, _SRC.REFERENCE_DATA, "bool", "any pair in ncci_edits PTP w/o override modifier; default 0",
         availability=_AVL.REQUIRES_REF_DATA, requires_ref_table="ncci_edits"),
     _F("cpt_pos_alignment_score",       _CAT.CODING, _SRC.REFERENCE_DATA, "bool", "POS in procedure_codes.metadata.valid_pos_codes; default 1",
@@ -246,7 +241,6 @@ _PROVIDER = (
     _F("rendering_provider_npi_encoded",     _CAT.PROVIDER, _SRC.PROVIDER, "float", "target-encoded rendering NPI",
         leakage_risk=_RISK.MEDIUM),
     _F("referring_provider_present",         _CAT.PROVIDER, _SRC.CLAIM, "bool", "referring_provider_id not null"),
-    _F("billing_rendering_same_npi",         _CAT.PROVIDER, _SRC.DERIVED, "bool", "billing_provider_npi == rendering_provider_npi"),
     _F("provider_specialty_taxonomy_encoded",_CAT.PROVIDER, _SRC.PROVIDER, "float", "target-encoded billing provider taxonomy_code",
         leakage_risk=_RISK.MEDIUM),
     _F("provider_overall_denial_rate",       _CAT.PROVIDER, _SRC.MATERIALIZED_VIEW, "float", "mv_provider_denial_profiles",
@@ -296,14 +290,12 @@ _ENCODED = (
 # Category L — rarity / unseen / missing (14 features)
 _RARITY = (
     _F("is_rare_payer",              _CAT.RARITY, _SRC.DERIVED, "bool", "payer_volume in (0, threshold)"),
-    _F("is_rare_cpt",                _CAT.RARITY, _SRC.DERIVED, "bool", "cpt_volume in (0, threshold)"),
     _F("is_rare_dx",                 _CAT.RARITY, _SRC.DERIVED, "bool", "dx_volume in (0, threshold)"),
     _F("unseen_payer",               _CAT.RARITY, _SRC.DERIVED, "bool", "value NOT in training vocabulary"),
     _F("unseen_cpt",                 _CAT.RARITY, _SRC.DERIVED, "bool", "value NOT in training vocabulary"),
     _F("unseen_dx",                  _CAT.RARITY, _SRC.DERIVED, "bool", "value NOT in training vocabulary"),
-    _F("unseen_billing_provider",    _CAT.RARITY, _SRC.DERIVED, "bool", "value NOT in training vocabulary"),
     _F("unseen_rendering_provider",  _CAT.RARITY, _SRC.DERIVED, "bool", "value NOT in training vocabulary"),
-    _F("unseen_any",                 _CAT.RARITY, _SRC.DERIVED, "bool", "OR of all unseen_* flags"),
+    _F("unseen_any",                 _CAT.RARITY, _SRC.DERIVED, "bool", "OR of unseen_payer/cpt/dx/rendering_provider"),
     _F("missing_payer",              _CAT.RARITY, _SRC.DERIVED, "bool", "payer is null/blank"),
     _F("missing_diagnosis",          _CAT.RARITY, _SRC.DERIVED, "bool", "no diagnoses present"),
     _F("missing_procedure",          _CAT.RARITY, _SRC.DERIVED, "bool", "no procedure_code on any line"),
@@ -329,15 +321,12 @@ _AVAILABILITY = (
 
 # Category M — variant-specific blocks. One tuple per (variant, claim_subtype).
 
-# 837P / healthcare (6 features)
+# 837P / healthcare (4 features; CR-104 retired surgery_global_period_active + cob_indicator)
 _HEALTHCARE_VARIANT = (
     _F("e_and_m_level",               _CAT.VARIANT, _SRC.CLAIM, "int", "1-5 from E&M CPT 99201-99499 suffix; 0 if not E&M"),
     _F("is_telehealth",               _CAT.VARIANT, _SRC.CLAIM, "bool", "POS in {02,10} OR modifier in {95,GT,G0}"),
-    _F("surgery_global_period_active",_CAT.VARIANT, _SRC.MATERIALIZED_VIEW, "bool", "prior surgery CPT within global period; 0 if none",
-        availability=_AVL.REQUIRES_HISTORY),
     _F("is_preventive_visit",         _CAT.VARIANT, _SRC.CLAIM, "bool", "CPT in 99381-99397"),
     _F("is_consultation",             _CAT.VARIANT, _SRC.CLAIM, "bool", "CPT in 99241-99245 or 99251-99255"),
-    _F("cob_indicator",               _CAT.VARIANT, _SRC.DERIVED, "bool", "alias of has_secondary_payer for variant-aware modeling"),
 )
 
 # 837P / therapy (9 features)

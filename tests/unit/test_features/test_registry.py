@@ -24,13 +24,13 @@ def test_all_healthcare_cols_have_specs():
 
 
 def test_healthcare_column_count_matches_categories():
-    # Healthcare = 108 universal + 6 Cat-M healthcare features = 114
-    # NB: specs_by_category(VARIANT) sums ALL variant-block specs (57 across
-    # 7 blocks: healthcare/therapy/transport/home_care/dental/specialty/
-    # institutional_other) — that's not the right comparator anymore.
+    # After CR-104 (Tier-A retirement): healthcare = 101 universal + 4 Cat-M = 105.
+    # NB: specs_by_category(VARIANT) sums ALL variant-block specs across
+    # 7 blocks (healthcare/therapy/transport/home_care/dental/specialty/
+    # institutional_other) — not a per-variant comparator.
     universal_n = len(universal_columns())
-    assert universal_n == 108
-    assert feature_count("837P", "healthcare") == universal_n + 6
+    assert universal_n == 101
+    assert feature_count("837P", "healthcare") == universal_n + 4
 
 
 def test_unknown_variant_raises():
