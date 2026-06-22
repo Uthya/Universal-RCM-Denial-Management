@@ -246,6 +246,8 @@ class FeatureBuilder:
     encoder: LeakageSafeTargetEncoder | None = None
     rarity_state: RarityState | None = None
     ref_lookup: RefDataLookup = field(default_factory=RefDataLookup)
+    # CR-120: opt-in lifecycle features. Default-off preserves pre-CR-120 bundles.
+    include_lifecycle: bool = False
 
     # ------------------------------------------------------------------
     # Training entry point
@@ -274,6 +276,7 @@ class FeatureBuilder:
 
         # Snapshots
         hist_snap, prov_snap, joint_snap = await self._load_snapshots(session, df)
+        life_snap = await self._maybe_load_lifecycle_snapshot(session, df)
 
         # Rarity vocab from training data
         self.rarity_state = RarityState.fit(df)
@@ -297,6 +300,7 @@ class FeatureBuilder:
             encoded_frame=enc_frame,
             fit_time=True,
             safe_rates=safe_rates,
+            lifecycle_snap=life_snap,
         )
 
         return FeatureArtifacts(
@@ -326,6 +330,7 @@ class FeatureBuilder:
             return self._empty_matrix()
 
         hist_snap, prov_snap, joint_snap = await self._load_snapshots(session, df)
+        life_snap = await self._maybe_load_lifecycle_snapshot(session, df)
         df_enriched = self._attach_ref_categoricals(df)
         enc_frame = encoded.transform(df_enriched, self.encoder)
         X = self._assemble(
@@ -336,6 +341,7 @@ class FeatureBuilder:
             encoded_frame=enc_frame,
             fit_time=False,
             safe_rates=safe_rates,
+            lifecycle_snap=life_snap,
         )
         return X
 
@@ -415,6 +421,21 @@ class FeatureBuilder:
         )
         return hist, prov, joint_snap
 
+    async def _maybe_load_lifecycle_snapshot(
+        self, session: AsyncSession, df: pd.DataFrame,
+    ) -> pd.DataFrame | None:
+        """CR-120: load per-replacement original snapshot if lifecycle features
+        are enabled on this builder. Returns None when ``include_lifecycle=False``
+        so the assemble path skips the lifecycle.compute() call entirely (no
+        cost, no behaviour change for pre-CR-120 bundles)."""
+        if not self.include_lifecycle:
+            return None
+        from rcm.features.dataset import load_original_snapshots  # noqa: PLC0415
+        claim_ids = df["claim_id"].dropna().astype(int).tolist() if "claim_id" in df else []
+        if not claim_ids:
+            return None
+        return await load_original_snapshots(session, claim_ids)
+
     def _assemble(
         self,
         df: pd.DataFrame,
@@ -425,6 +446,7 @@ class FeatureBuilder:
         encoded_frame: pd.DataFrame,
         fit_time: bool,
         safe_rates: pd.DataFrame | None = None,
+        lifecycle_snap: pd.DataFrame | None = None,
     ) -> pd.DataFrame:
         # Pull common encoded-column slices to feed Cat A / C / D / H
         def _enc(col: str) -> pd.Series:
@@ -458,7 +480,6 @@ class FeatureBuilder:
         code_cols = coding.compute(
             df,
             ref=self.ref_lookup,
-            frequency_code_encoded=None,
             cpt_frequency_ytd={},
         )
         timely_cols = timely.compute(df, ref=self.ref_lookup)
@@ -480,13 +501,18 @@ class FeatureBuilder:
         # Unknown tuples → global_fallback (universal-only columns, 0-width Cat M)
         var_cols = self._dispatch_variant_block(df, history_snap)
 
-        # Concatenate in registry order
-        all_parts = pd.concat(
-            [base_cols, cov_cols, auth_cols, clin_cols, code_cols, timely_cols,
-             doc_cols, hist_cols, prov_cols, joint_cols, encoded_frame, rar_cols,
-             avail_cols, var_cols],
-            axis=1,
-        )
+        # CR-120: lifecycle category appended LAST so existing column ORDER
+        # is preserved verbatim — pre-CR-120 bundles that don't enable
+        # `include_lifecycle` see no change to their X matrix.
+        parts = [base_cols, cov_cols, auth_cols, clin_cols, code_cols, timely_cols,
+                 doc_cols, hist_cols, prov_cols, joint_cols, encoded_frame, rar_cols,
+                 avail_cols, var_cols]
+        if self.include_lifecycle:
+            from rcm.features.categories import lifecycle as lifecycle_cat  # noqa: PLC0415
+            snap = lifecycle_snap if lifecycle_snap is not None else pd.DataFrame()
+            life_cols = lifecycle_cat.compute(df, snap)
+            parts.append(life_cols)
+        all_parts = pd.concat(parts, axis=1)
 
         # CR-107: override the 8 MV-backed denial-rate columns with leakage-safe
         # per-row values when safe_rates is provided. The MV-derived columns
@@ -499,7 +525,9 @@ class FeatureBuilder:
                     all_parts[col] = aligned[col].astype("float32").fillna(0.0)
 
         expected = list(get_feature_columns(
-            self.service_variant, self.claim_subtype, fall_back_to_global=True,
+            self.service_variant, self.claim_subtype,
+            fall_back_to_global=True,
+            include_lifecycle=self.include_lifecycle,
         ))
 
         # Backfill any missing columns with the registered default value
@@ -516,6 +544,7 @@ class FeatureBuilder:
         validate_feature_frame(
             out, self.service_variant, self.claim_subtype,
             fall_back_to_global=True,
+            include_lifecycle=self.include_lifecycle,
         )
         return out
 
@@ -553,7 +582,9 @@ class FeatureBuilder:
 
     def _empty_matrix(self) -> pd.DataFrame:
         cols = list(get_feature_columns(
-            self.service_variant, self.claim_subtype, fall_back_to_global=True,
+            self.service_variant, self.claim_subtype,
+            fall_back_to_global=True,
+            include_lifecycle=self.include_lifecycle,
         ))
         return pd.DataFrame({c: pd.Series(dtype="float32") for c in cols})
 

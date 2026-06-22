@@ -239,7 +239,6 @@ _FEATURE_TO_BUCKET: dict[str, tuple[str, str, str]] = {
     "required_modifier_present":        _PROC,
     "is_likely_unbundled":              _PROC,
     "cpt_pos_alignment_score":          _PROC,
-    "frequency_code_encoded":           _PROC,
     "is_replacement_claim":             _PROC,
     "cpt_frequency_for_patient_ytd":    _PROC,
     "cpt_frequency_exceeds_limit":      _PROC,
@@ -385,6 +384,19 @@ _FEATURE_TO_BUCKET: dict[str, tuple[str, str, str]] = {
     "is_initial_assessment":       _PROC,
     "is_group_therapy":            _PROC,
     "clia_number_present":         _DOC,
+
+    # --- CR-117/CR-118 lifecycle (replacement-claim awareness) ---
+    "had_prior_denial":                  _HIST,
+    "prior_denial_bucket":               _HIST,
+    "days_since_original_denial":        _HIST,
+    "auth_added_in_replacement":         _AUTH,
+    "referral_added_in_replacement":     _AUTH,
+    "modifier_added_in_replacement":     _PROC,
+    "diagnosis_changed_in_replacement":  _DX,
+    "procedure_changed_in_replacement":  _PROC,
+    "lines_changed_in_replacement":      _PROC,
+    "charge_changed_in_replacement":     _BILL,
+    "correction_action_count":           _HIST,
 }
 
 

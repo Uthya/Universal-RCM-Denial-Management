@@ -1,4 +1,4 @@
-"""Category D — coding integrity (10 features; CR-104 retired has_invalid_modifier_combo)."""
+"""Category D — coding integrity (9 features; CR-104 retired has_invalid_modifier_combo, CR-122B retired frequency_code_encoded)."""
 
 from __future__ import annotations
 
@@ -30,7 +30,6 @@ def compute(
     df: pd.DataFrame,
     *,
     ref: RefDataLookup | None = None,
-    frequency_code_encoded: pd.Series | None = None,
     cpt_frequency_ytd: dict[int, int] | None = None,
 ) -> pd.DataFrame:
     out = pd.DataFrame(index=df.index)
@@ -89,11 +88,9 @@ def compute(
             pos_align.append(int(str(pos) in valid))
     out["cpt_pos_alignment_score"] = pd.Series(pos_align, index=df.index).astype("int8")
 
-    # Frequency code
-    if frequency_code_encoded is not None:
-        out["frequency_code_encoded"] = frequency_code_encoded.reindex(df.index, fill_value=0.0).astype("float32")
-    else:
-        out["frequency_code_encoded"] = pd.Series(0.0, index=df.index, dtype="float32")
+    # Frequency code — CR-122B retired `frequency_code_encoded` (gain=0 on all
+    # production variants; the parameter was never wired into the encoder
+    # pipeline). Only `is_replacement_claim` survives.
     out["is_replacement_claim"] = pd.Series(
         [int(str(f) in ("6", "7")) for f in freqs], index=df.index,
     ).astype("int8")

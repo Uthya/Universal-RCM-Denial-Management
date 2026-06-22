@@ -161,6 +161,10 @@ def _inventory_available_bundles() -> list[dict]:
             ),
             "training_size":      schema.get("training_size"),
             "training_prevalence":schema.get("training_prevalence"),
+            # CR-120: surface the lifecycle opt-in flag so operators can see
+            # which bundles include the 11 lifecycle features.
+            "include_lifecycle":  bool(schema.get("include_lifecycle", False)),
+            "feature_columns_n":  len(schema.get("feature_columns") or []),
         })
     return out
 

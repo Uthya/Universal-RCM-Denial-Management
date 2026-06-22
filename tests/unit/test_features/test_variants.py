@@ -68,24 +68,24 @@ class TestRegistryCounts:
     These are load-bearing — model artifacts persist `feature_columns`, so
     bumping a count is a SCHEMA change that needs a CHANGELOG entry."""
 
-    def test_universal_is_101(self):
-        # CR-104: retired 7 universal Tier-A features (was 108).
-        assert len(universal_columns()) == 101
+    def test_universal_is_100(self):
+        # CR-104 retired 7 universal Tier-A features (was 108→101).
+        # CR-122B retired frequency_code_encoded (101→100).
+        assert len(universal_columns()) == 100
 
     @pytest.mark.parametrize("key, expected_count", [
-        # CR-104: -7 universal across the board, -2 for the healthcare M-variant
-        # block (surgery_global_period_active + cob_indicator retired).
-        (("837P", "healthcare"),           105),
-        (("837P", "therapy"),              110),
-        (("837P", "transport"),            109),
-        (("837P", "specialty"),            111),
-        (("837I", "home_care"),            112),
-        (("837I", "institutional_other"),  106),
-        (("837I", "inpatient"),            106),   # alias
-        (("837I", "hospice"),              106),   # alias
-        (("837I", "specialty"),            106),   # alias
-        (("837D", "dental"),               109),
-        (("_global", "_global"),           101),
+        # CR-104 baseline; CR-122B -1 universal across every variant.
+        (("837P", "healthcare"),           104),
+        (("837P", "therapy"),              109),
+        (("837P", "transport"),            108),
+        (("837P", "specialty"),            110),
+        (("837I", "home_care"),            111),
+        (("837I", "institutional_other"),  105),
+        (("837I", "inpatient"),            105),   # alias
+        (("837I", "hospice"),              105),   # alias
+        (("837I", "specialty"),            105),   # alias
+        (("837D", "dental"),               108),
+        (("_global", "_global"),           100),
     ])
     def test_per_variant_count(self, key, expected_count):
         actual = len(get_feature_columns(*key))
@@ -93,8 +93,8 @@ class TestRegistryCounts:
 
     def test_count_by_variant_helper(self):
         counts = feature_count_by_variant()
-        assert counts[("837P", "healthcare")] == 105
-        assert counts[("_global", "_global")] == 101
+        assert counts[("837P", "healthcare")] == 104
+        assert counts[("_global", "_global")] == 100
 
     def test_registered_variants_returns_all_11(self):
         assert len(registered_variants()) == 11

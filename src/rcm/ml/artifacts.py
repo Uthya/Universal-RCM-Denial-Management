@@ -48,6 +48,11 @@ class ModelArtifactBundle:
     metrics: dict[str, Any] = field(default_factory=dict)
     training_size: int = 0
     training_prevalence: float = 0.0
+    # CR-120: lifecycle-feature opt-in flag. False = pre-CR-120 bundle (no
+    # lifecycle columns in X). True = CR-120 bundle trained with the 11
+    # lifecycle columns appended after the variant block. Defaults to False
+    # so JSON schemas saved before CR-120 round-trip cleanly.
+    include_lifecycle: bool = False
 
     # ------------------------------------------------------------------
     def save(self, artifact_dir: Path) -> None:
@@ -77,6 +82,7 @@ class ModelArtifactBundle:
             "decision_threshold": self.decision_threshold,
             "training_size": self.training_size,
             "training_prevalence": self.training_prevalence,
+            "include_lifecycle": self.include_lifecycle,
             "metrics": self.metrics,
         }
         (artifact_dir / "feature_schema.json").write_text(
@@ -121,4 +127,5 @@ class ModelArtifactBundle:
             metrics=schema.get("metrics", {}),
             training_size=int(schema.get("training_size", 0)),
             training_prevalence=float(schema.get("training_prevalence", 0.0)),
+            include_lifecycle=bool(schema.get("include_lifecycle", False)),
         )

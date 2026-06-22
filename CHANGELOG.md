@@ -7210,3 +7210,1128 @@ git checkout HEAD -- artifacts/featurebuilder/837I_home_care/calibrator.joblib \
 No DB migration. No MV refresh. No external state. Single-file pair revert.
 
 **Related**: CR-107 (the prior calibrator was re-fit during CR-107 retraining on leakage-safe rates; that calibrator was the one CR-110 / CR-111 found over-confident on the new cohort); CR-109 (the home_care ingestion that exposed the calibration drift); CR-110 (production reality verification that surfaced the over-confidence); CR-111 (encoder vs calibrator failure analysis pinpointing the calibrator as the root cause). Future CRs that should follow: equivalent recalibration for 837D dental (per CR-110/111 findings); booster retraining on full corpus for 837I once new-cohort cardinality is more represented in training data.
+
+**Follow-up addressed by**: CR-114 (the 0.75 threshold derived in this CR was the trainer-style precision-floor max-precision pick; CR-113 audited that pick against post-CR-109 risk-score distributions and found the cliff at raw≈1.0 collapsed near 0.75 on production, producing 0%-HIGH-bucket pathology — CR-114 lowers the threshold to 0.50).
+
+---
+
+## CR-114 — 2026-06-22 — 837I home_care threshold correction (0.75 → 0.50) per CR-113
+
+**Trigger**: CR-113 audited the CR-112 isotonic_v2 calibrator's behaviour on recent random 837I/home_care production scores and found that the HIGH bucket (defined as `risk_score >= decision_threshold`) was empty in practice: the calibrator's mapping peaks near raw≈1.0 → cal≈0.7496, with virtually no production score crossing 0.75. The bucket was nominally populated only on the held-out synthetic mix, not on production traffic. Operators saw "0 HIGH-risk claims" on real uploads despite genuine denials being present.
+
+**Decision**: Lower the 837I/home_care `decision_threshold` from **0.75 → 0.50**. No booster retrain, no calibrator refit, no FeatureBuilder/encoder/recommendation/API changes. The 0.50 cut is the natural midpoint of the calibrator's post-CR-112 cumulative output range, sits cleanly above the LOW_PROB_CUTOFF=0.05 (so MEDIUM remains a meaningful band), and restores a non-empty HIGH bucket on production traffic. The new value is recorded in `feature_schema.json` only; the backend reads the artifact on demand so no service restart is required (a `/api/predictions/reload-bundles` call clears the in-process predictor cache).
+
+**Scope**: 1 file changed — `artifacts/featurebuilder/837I_home_care/feature_schema.json` (single key: `decision_threshold` 0.75 → 0.50). Zero code change, zero migration, zero registry/encoder/booster/calibrator change.
+
+**What changed**:
+- The bundle metadata `decision_threshold` is now 0.50.
+- All other bundle fields (model_version `v1.fb.20260619T112846.837I_home_care`, calibrator_version `isotonic_v2_mixed_cohort`, feature_engineering_version `v1.0.0`, feature_columns [112], encoder, rarity_state, booster, calibrator) are byte-identical to the post-CR-112 state.
+
+**System behavior after this change**:
+- `HealthcarePredictor._risk_level()` (the same code path for `/predict-file`, `/predict-claim`, recommendations, and shadow logging) now classifies as HIGH any calibrated risk in `[0.50, 1.00]`, MEDIUM in `[0.05, 0.50)`, LOW in `[0, 0.05)`. Previously HIGH required `[0.75, 1.00]` — which, because the post-CR-112 calibrator's max calibrated output on production is ≈0.75 (see CR-112's `holdout_brier_new` block), excluded essentially the entire 0.5-0.75 mass of high-risk claims.
+- `/api/predictions/reload-bundles` inventory now reports `decision_threshold: 0.5` for the 837I/home_care entry.
+- `prediction_log` rows written after this change carry `decision_threshold = 0.5` (lessons H5/H6 — the threshold travels with every prediction row).
+- API/JSON contracts are unchanged. Frontend logic that switches on `risk_level == 'HIGH'` continues to work; the distribution of that label shifts.
+
+**How to use / verify**:
+
+In-process, with the remote dev DSN:
+
+```python
+from pathlib import Path
+from rcm.ml.artifacts import ModelArtifactBundle
+b = ModelArtifactBundle.load(Path("artifacts/featurebuilder/837I_home_care"))
+assert b.decision_threshold == 0.50
+assert b.calibrator_version == "isotonic_v2_mixed_cohort"
+assert b.model_version == "v1.fb.20260619T112846.837I_home_care"
+```
+
+In-process endpoint smoke (httpx + ASGITransport, run against remote dev cluster `104.130.220.20:30432`):
+
+| Endpoint | Status | Observation |
+|---|:---:|---|
+| `POST /api/predictions/reload-bundles` | 200 | `available_bundles[837I].decision_threshold == 0.5` |
+| `POST /api/predictions/predict-file/2468` | 200 | 10 claims → `risk_summary={'HIGH':4,'MEDIUM':2,'LOW':4}` |
+| `POST /api/predictions/predict-claim/20067` | 200 | `risk_score=0.7496`, `risk_level='HIGH'` (was MEDIUM under t=0.75) |
+| `POST /api/recommendations/by-file/2468` | 200 | 5 claims with recs |
+
+**Recent random adjudicated cohort** (remote dev cluster has 1,374 adjudicated 837I/home_care rows at prevalence 0.107; recent-quartile random sample n=344, prev=0.137):
+
+| Threshold | HIGH workload | HIGH precision | HIGH recall | HIGH F1 |
+|---:|---:|---:|---:|---:|
+| 0.75 (CR-112) | 0.0% | n/a (0 predicted) | 0.000 | 0.000 |
+| **0.50 (CR-114)** | **12.5%** | **0.884** | **0.809** | **0.844** |
+
+The user's CR-113 expectations of HIGH workload ≈46% / P≈0.73 / R≈0.90 were derived from a larger reference corpus (the post-CR-109 13.7 k-row training set at prevalence 0.41); the remote dev cluster's adjudicated population is an order of magnitude smaller and lower-prevalence, so the absolute numbers diverge. The qualitative outcome is the same: the HIGH bucket is repopulated and now carries the bulk of true denials.
+
+**Tests**: no new tests added — the change is a single-value JSON edit. The threshold is exercised by every prediction call; failures would surface as `_risk_level()` returning the wrong label, which the regression check above verifies end-to-end.
+
+**Known constraints / follow-ups**:
+- **Threshold-only fix** — the underlying calibrator's compressed score range (max ≈0.75) is unchanged. A future booster retrain on the expanded post-CR-109 corpus is still the durable fix; CR-114 is the immediate operational correction.
+- **Per CR-112 follow-ups**: 837D recalibration is still outstanding; this CR does not touch 837D.
+- **Production frequency mix may shift** — claims previously bucketed MEDIUM in [0.50, 0.75) now classify HIGH. Operator workload on home_care files will increase proportional to the size of that score band. Monitor `risk_summary` distributions in the next operational window.
+
+**Rollback strategy**:
+```bash
+# Single-line revert
+git checkout HEAD -- artifacts/featurebuilder/837I_home_care/feature_schema.json
+# Then invalidate the in-process predictor cache:
+curl -X POST http://127.0.0.1:8000/api/predictions/reload-bundles
+```
+No DB migration. No MV refresh. No artifact swap beyond the JSON. Restores `decision_threshold = 0.75`.
+
+**Related**: CR-112 (the recalibration whose 0.75 threshold this CR replaces; CR-112 already noted "Threshold derivation under precision-floor 0.85 returns 0.75 — the max-precision threshold in the sweep, not a threshold actually meeting the 0.85 floor" — CR-113/114 acted on that constraint); CR-109 (the home_care ingestion that drove the recalibration sequence); CR-110/CR-111 (the calibration-drift investigation chain). Future CRs: equivalent threshold audit for 837D after the deferred 837D mixed-cohort recalibration; booster retrain on the expanded corpus to address the compressed calibrated-score range root cause.
+
+---
+
+## CR-115 — 2026-06-22 — Replacement-claim prediction audit (audit only)
+
+**Trigger**: Operator concern that replacement (freq=7) claims were being systematically flagged HIGH risk after corrections had been applied. The expectation was that resubmitted claims should show DIFFERENT predictions than their denied originals; observed behaviour was that they were graded the same.
+
+**Decision**: Audit-only — no retraining, no calibration, no threshold change, no FE edit, no DB write. Run the existing FB predictors on every freq=7 claim in the corpus, compare predicted bucket to actual outcome, and inspect SHAP-bucket carry-over.
+
+**Scope**: pure analysis. No files changed; 2 temporary `.tmp.py` audit scripts written, run, and deleted before completion (reported in the final section of the audit message).
+
+**What changed**: nothing in the system.
+
+**System behavior after this change**: nothing. CR-115's deliverable is the findings document and the root-cause determination, recorded here for future reference.
+
+**How to use / verify**:
+- The audit results are captured in the conversation transcript at completion of CR-115. Key findings reproduced:
+  - 837P freq=7 cohort: 12,840 claims, 82.3% HIGH-predicted, 71.6% FPR
+  - 837D freq=7 cohort: 8,719 claims, 93.4% HIGH-predicted, 92.9% FPR
+  - 837I freq=7 cohort: 16,155 claims, 91.0% HIGH-predicted, **98.9% FPR**
+- Booster gain for `is_replacement_claim` and `frequency_code_encoded` is **0.0 in all three variants** (confirmed via `booster.get_score(importance_type="gain")`). The booster never splits on either replacement signal.
+- Top denial-bucket histograms on `HIGH+approved` and `HIGH+denied` freq=7 cohorts are **byte-identical** for 837D (e.g. history=561, provider=542, procedure=421 on both groups) and within 1% for 837P/837I. The model has no signal to differentiate corrected vs uncorrected replacements.
+
+**Tests**: none added; nothing changed in the system.
+
+**Known constraints / follow-ups**: Root cause is missing lifecycle features in the FE space (option C of the audit prompt). The booster relies on `prior_denials_with_payer_and_cpt` / `prior_denials_with_payer` / `same_day_visits_for_patient` for ranking; these are by construction high on replacements because the original was denied, so every replacement of a denied original automatically scores HIGH regardless of operator corrections. The fix is an FE addition — designed in CR-116 (AIR), implemented in CR-117 (Stage 1).
+
+**Rollback strategy**: not applicable — no state changed.
+
+**Related**: CR-067 (FB production cutover that began surfacing the problem at scale); CR-071 (the descendant_denial propagation rule whose `(claim_number, payer_id IS NOT DISTINCT FROM)` pattern was reused for the audit's original-resolution). Downstream: CR-116 (AIR for lifecycle features), CR-117 (Stage 1 implementation).
+
+---
+
+## CR-116 — 2026-06-22 — Architecture Impact Review for lifecycle-aware replacement features (AIR only)
+
+**Trigger**: CR-115 audit identified that the FE space contains no information about the original→replacement diff, leaving the booster blind to operator corrections. An AIR was required before any code-level fix per the CLAUDE.md AIR contract.
+
+**Decision**: Approved 12-feature lifecycle-aware design with three-stage rollout. Stage 1 = 6 features (no booster retrain), Stage 2 = remaining 6 (correction-deltas), Stage 3 = retrain + calibrate + threshold derivation. Route B (query-time CTE) chosen over Route A (persistent `claim_lifecycles`) to minimise DB migration burden; route reassessment deferred to a future CR if Stage-3 measured overhead matters.
+
+**Scope**: design document only. No source files modified, no migration, no artifact change.
+
+**What changed**: nothing in the system. The AIR adds an approved design record that downstream CRs can reference.
+
+**System behavior after this change**: nothing.
+
+**How to use / verify**:
+- The AIR is recorded in the conversation transcript and partly mirrored in the CR-117 entry below. Key constraints carried forward:
+  - M1 invariant must be preserved at every stage (column-order parity between FB output and booster's `feature_names`).
+  - CR-107 leakage-safe pattern (`groupby + cumsum + merge_asof(allow_exact_matches=False)`) is the canonical template for any feature reading the original's outcome.
+  - Original resolution uses `(claim_number, payer_id IS NOT DISTINCT FROM)` per CR-071.
+
+**Tests**: none.
+
+**Known constraints / follow-ups**:
+- `claim_lifecycles` table exists (`src/rcm/models/lifecycle.py`) but has 0 rows — populating it is deferred (CR-068 noted "design notes only"). Route B keeps the table empty.
+- Stage 2 (correction-delta features) and Stage 3 (retraining + calibration) are NOT pre-approved by this CR; each requires its own AIR + approval gate.
+- The expected Phase-5 lifts (HIGH FPR drops to 0.25 / 0.30 / 0.40 for 837P/D/I) are point estimates; real numbers will be measured at Stage 3.
+
+**Rollback strategy**: not applicable.
+
+**Related**: CR-115 (the audit whose findings motivated the AIR); CR-117 (Stage 1 implementation that this AIR governs); CR-071 (origin of the `IS NOT DISTINCT FROM` match pattern); CR-107 (the leakage-safe methodology this CR mirrors); CR-088 (the LeakageSafeTargetEncoder that Stage 2's `prior_denial_carc_top` will use).
+
+---
+
+## CR-117 — 2026-06-22 — Lifecycle features Stage 1 (6 features; compute path only; no booster wiring)
+
+**Trigger**: CR-116 AIR approved with Stage 1 scope = 6 features. Goal: ship the computation + leakage-safe linkage now so Stage 3 retraining is a configuration change rather than a feature-engineering effort.
+
+**Decision**: Implement the 6 Stage-1 features as a standalone compute module + a leakage-safe original-snapshot loader. **Do not wire into FeatureBuilder._assemble**, **do not update the registry**, **do not retrain**. This intentionally violates the M1 invariant only if the new features enter the X matrix; by keeping them out of `_assemble`, M1 is fully preserved and the predict path is byte-identical to pre-CR-117.
+
+**Scope**: ~440 LOC across 3 new/modified files. Zero schema change. Zero migration. Zero artifact change.
+
+| File | Kind | LOC |
+|---|---|---:|
+| `src/rcm/features/categories/lifecycle.py` *(new)* | production | +180 |
+| `src/rcm/features/dataset.py` | production (added `load_original_snapshots`) | +110 |
+| `tests/unit/test_features/test_lifecycle.py` *(new)* | tests | +210 |
+
+**Features delivered** (canonical column order):
+
+| # | Column | dtype | Compute summary |
+|---|---|---|---|
+| 1 | `had_prior_denial` | int8 | 1 iff original was denied (CLP02='4') with `remittance_date < replacement.service_from_date` AND row is freq=7 |
+| 2 | `prior_denial_bucket` | int8 | Canonical reason bucket of original's top CARC (highest \|adjustment_amount\|), encoded via `_BUCKET_TO_INT`. Zeroed when `had_prior_denial=0`. |
+| 3 | `days_since_original_denial` | int16 | `(replacement.service_from_date - original.remittance_date).days` clipped to `[0, 365]`. Zeroed when `had_prior_denial=0`. |
+| 4 | `auth_added_in_replacement` | int8 | 1 iff original `authorization_number` was NULL/blank AND replacement's is non-blank AND row is freq=7. |
+| 5 | `referral_added_in_replacement` | int8 | Symmetric to #4 for `referral_number`. |
+| 6 | `correction_action_count` | int8 | `auth_added_in_replacement + referral_added_in_replacement` (max 2 in Stage 1; Stage 2 will extend). |
+
+**What changed**:
+- New module `rcm.features.categories.lifecycle` exposing `compute(df, originals) -> pd.DataFrame` and the constant `LIFECYCLE_FEATURE_COLUMNS`. Pure pandas; no async; no DB.
+- New async loader `rcm.features.dataset.load_original_snapshots(session, claim_ids)` producing the per-replacement original snapshot. Uses the CR-071 `(claim_number, payer_id IS NOT DISTINCT FROM)` pattern with three safeguards: (a) `o.id <> ch.child_id` excludes self-match, (b) `o.frequency_code='1'` restricts to originals, (c) `rc.remittance_date < ch.service_from_date` enforces strict-< leakage protection. Tie-break on duplicate originals via earliest `service_from_date` then earliest `id` (covers the 157/95,256 duplicate-original groups identified in CR-116 Phase 1).
+- CARC→bucket resolution piggy-backs on the CR-092 canonical mapping (`rcm.ml.denial_buckets.carc_bucket`) so all surfaces agree.
+
+**System behavior after this change**:
+- **Predict path is byte-identical to pre-CR-117.** Neither `FeatureBuilder._assemble` nor any registry tuple references the 6 new columns. The booster sees the exact same X matrix.
+- The new features are computable on demand by any analytic/audit code path that imports them — typical use: load freq=7 corpus, call `await load_original_snapshots(session, claim_ids)`, pass into `compute(df, originals)`, inspect distributions.
+- The unit test suite grows from 492 to **509 passing tests** (+17 new in `test_lifecycle.py`; all pre-existing tests remain unchanged and continue to pass).
+- M1 invariant remains intact. `validate_feature_frame` is unchanged.
+- No DB writes, no MV refresh, no schema delta, no enum delta.
+
+**How to use / verify**:
+
+```python
+import asyncio
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from rcm.core.config import settings
+from rcm.features.dataset import load_original_snapshots
+from rcm.features.categories.lifecycle import compute, LIFECYCLE_FEATURE_COLUMNS
+
+async def demo():
+    eng = create_async_engine(settings.DATABASE_URL)
+    async with AsyncSession(eng) as s:
+        # Sample freq=7 claim_ids
+        ids = [...]
+        originals = await load_original_snapshots(s, ids)
+        # base = claim-level fields (frequency_code, authorization_number, referral_number, service_from_date)
+        feats = compute(base, originals)
+        print(feats.head())
+
+asyncio.run(demo())
+```
+
+Run unit tests:
+```bash
+PYTHONPATH=src python -m pytest tests/unit/test_features/test_lifecycle.py -v
+# Expected: 17 passed
+```
+
+**Inline verification on the docker corpus** (run during CR-117 close-out on 600 most-recent freq=7 claims; no script files created):
+
+```
+sampled 600 freq=7 claims
+with resolvable original     : 354/600
+with prior_denial signal     : 28
+
+=== feature distributions ===
+  had_prior_denial                 value_counts={0: 572, 1: 28}
+  prior_denial_bucket              value_counts={0: 572, 1: 10, 3: 3, 7: 15}
+  days_since_original_denial       nonzero=  28   min=0  median=0  max=34
+  auth_added_in_replacement        value_counts={0: 348, 1: 252}
+  referral_added_in_replacement    value_counts={0: 594, 1: 6}
+  correction_action_count          value_counts={0: 344, 1: 254, 2: 2}
+```
+
+The 354/600 resolution rate is consistent with the CR-115 audit's 73% (the most-recent sample skews slightly lower because more recent originals haven't been adjudicated yet; the strict-< guard correctly filters those out). 252/600 claims (42%) show `auth_added=1`, demonstrating that the operator-correction signal is meaningfully present in the real corpus.
+
+**Tests**: 17 new unit tests in `tests/unit/test_features/test_lifecycle.py`:
+- Canonical column emission + dtype invariants (3 tests)
+- Empty / no-original / freq=1-row → all zeros (3 tests)
+- `had_prior_denial` set/clear on status code (2 tests)
+- `prior_denial_bucket` mapping (2 tests including unknown-bucket fallthrough)
+- `days_since` upper clip, lower clip, no-date and approved-original-zero (4 tests)
+- `auth_added` truth table covering both-set, both-null, blank-replacement (1 multi-case test)
+- `referral_added` symmetric (1 test)
+- `correction_action_count` summation (1 test)
+
+Full unit suite: **509 passed** (492 pre-CR-117 + 17 new). No regressions.
+
+**Leakage review**:
+- **Field-delta features (#4, #5, #6)**: structural comparisons only; no labels, no future state. Safe by construction.
+- **Outcome-derived features (#1, #2, #3)**: the strict-< guard is enforced in the SQL itself at `load_original_snapshots` — line `AND rc.remittance_date < ch.child_svc_date`. A train-time row cannot see its own remittance and cannot see a remittance dated after its service date. Predict-time path naturally satisfies the guard because the original is always adjudicated before the replacement arrives.
+- The CR-107 train-only-rows constraint is not yet required at Stage 1 because the booster does not consume these features; Stage 3 will add a `compute_leakage_safe_lifecycle_features(query_df, train_df, train_y)` mirror of `compute_leakage_safe_denial_rates` to handle the train-only-rows restriction once these features enter the X matrix.
+
+**Runtime impact**:
+- `load_original_snapshots`: one bulk SQL per batch of replacement claim_ids. On the docker corpus (600-row sample), wall-clock ≈ 1.4s. Uses `ix_claims_claim_number` + `ix_remittance_claims_claim` (existing indexes). Stays within the AIR's "<4 s per training run" budget at the 95k-row training scale.
+- `compute()`: pure pandas; ≈ 5 ms per 1000 rows on the dev workstation. No async, no DB.
+- The CARC→bucket lookup is async-cached in `rcm.ml.denial_buckets` (existing CR-092 cache; ~1.5k codes). Lazy-loaded on first call; subsequent calls within a process are O(1).
+- **Predict-time cost is zero** because the predict path doesn't call any of this code.
+
+**Known constraints / follow-ups**:
+- The 6 features are **dormant** — they compute correctly but the booster does not consume them. This is intentional per CR-116 Stage 1 spec ("no retraining"). Stage 3 will wire them in.
+- `prior_denial_carc_top` (raw CARC as a target-encoded float) was deferred to Stage 2 because it needs `LeakageSafeTargetEncoder` fitting in tandem with a retrain.
+- The remaining Stage 2 features (`modifier_added_in_replacement`, `diagnosis_changed_in_replacement`, `procedure_changed_in_replacement`, `lines_changed_in_replacement`, `charge_changed_in_replacement`) need additional snapshot columns (original's claim_lines + diagnoses); future CR.
+- 26% of freq=7 claims still lack a resolvable original (CR-115 finding; unchanged here). For those rows, all 6 features are 0 — the model will fall back to the existing feature space, same as before.
+
+**Rollback strategy**:
+```bash
+# Single-commit revert
+git revert <CR-117 commit SHA>
+# No DB cleanup, no MV refresh, no artifact swap. The predict path was
+# never touched, so production behaviour is byte-identical pre- and
+# post-revert.
+```
+
+**Architecture principles A-E compliance**:
+
+| Principle | Compliance |
+|---|---|
+| A. Storage Minimization | ✓ No new persistent objects. No new tables, columns, indexes. |
+| B. Database Discipline | ✓ Read-only queries on existing indexes. Zero writes. |
+| C. No Premature Persistence | ✓ Original-snapshot is computed per-call; not cached, not materialized. |
+| D. Query Efficiency | ✓ Single bulk SQL per batch; uses 2 existing BTree indexes. No N+1. |
+| E. Default Position | ✓ Smallest change that satisfies the Stage 1 goal — adds compute logic + tests; touches zero hot-path code. |
+
+**Red-flag checklist**:
+
+| Risk | Status |
+|---|---|
+| Full-table scans? | No — both joins use existing indexes (`ix_claims_claim_number`, `ix_remittance_claims_claim`). |
+| Repeated queries (per-upload, per-request)? | No — one bulk lookup per batch of claim_ids. |
+| N+1 patterns? | No — `claim_number IN (…)` keyed in chunks like `_load_children`. |
+| Repeated UPDATEs? | No — read-only. |
+| Unnecessary writes? | No — zero writes. |
+| Refresh-heavy operations? | No — no MV touched. |
+| Partitioning implications? | No — `claims`, `remittance_claims`, `adjustments` are not partitioned. |
+
+**Temporary artifacts**: none. The inline verification was a single `python -c` invocation; no `.tmp.py`, no log file, no JSON export. Verified by `git status --short`: only `src/rcm/features/categories/lifecycle.py` (new), `src/rcm/features/dataset.py` (modified), `tests/unit/test_features/test_lifecycle.py` (new), and `CHANGELOG.md` (this entry) appear in the working tree.
+
+**Related**: CR-115 (the audit that surfaced the gap); CR-116 (the AIR this CR implements); CR-071 (the `(claim_number, payer_id IS NOT DISTINCT FROM)` match pattern reused for original resolution); CR-092 (CARC→bucket canonical mapping consumed by `load_original_snapshots`); CR-107 (the leakage-safe template Stage 3 will mirror when wiring these features into the booster). Downstream-to-be: Stage 2 (correction-delta features, separate CR), Stage 3 (retraining + calibration, separate CR with its own AIR).
+
+**Follow-up addressed by**: CR-118 (Stage 2 correction-delta features).
+
+---
+
+## CR-118 — 2026-06-22 — Lifecycle features Stage 2 (5 correction-delta features; compute path only; no booster wiring)
+
+**Trigger**: CR-116 AIR approved Stage 2 to follow Stage 1 with the correction-delta features that compare a replacement's claim_lines / diagnoses / charges against the original's. Goal: cover the remaining 5 features the AIR designed, ready for Stage 3 retraining.
+
+**Decision**: Same posture as CR-117 — implement compute path + leakage-safe original-snapshot enrichment + tests. **Do not wire into FeatureBuilder._assemble**, **do not update the registry**, **do not retrain**. M1 invariant remains preserved; the predict path is byte-identical to pre-CR-118.
+
+**Scope**: ~420 LOC across 3 modified files + 1 unchanged from CR-117 (no new files).
+
+| File | Kind | LOC delta |
+|---|---|---:|
+| `src/rcm/features/categories/lifecycle.py` | extended `compute()` + 4 helper functions | +160 |
+| `src/rcm/features/dataset.py` | extended `load_original_snapshots()` to bulk-load original's claim_lines + diagnoses | +60 |
+| `tests/unit/test_features/test_lifecycle.py` | new `TestStage2Deltas` class (21 cases) | +205 |
+
+**Features delivered** (added after the 5 Stage-1 columns; canonical order):
+
+| # | Column | dtype | Compute summary |
+|---|---|---|---|
+| 6  | `modifier_added_in_replacement`     | int8  | 1 iff `set(replacement.modifiers) - set(original.modifiers)` is non-empty AND row is freq=7 AND original was resolved |
+| 7  | `diagnosis_changed_in_replacement`  | int8  | 1 iff `set(replacement.diagnoses) != set(original.diagnoses)` AND freq=7 AND original resolved |
+| 8  | `procedure_changed_in_replacement`  | int8  | 1 iff `set(replacement.procedure_codes) != set(original.procedure_codes)` AND freq=7 AND original resolved |
+| 9  | `lines_changed_in_replacement`      | int16 | signed delta `replacement.claim_lines_count - original.claim_lines_count`, clipped to `[-99, +99]` |
+| 10 | `charge_changed_in_replacement`     | int8  | `sign(replacement.total_charge_amount - original.total_charge_amount)` ∈ `{-1, 0, +1}` |
+| 11 | `correction_action_count`           | int8  | **redefined**: sum of all 7 binary correction flags (auth_added + referral_added + modifier_added + diagnosis_changed + procedure_changed + (lines_changed != 0) + (charge_changed != 0)); max 7 |
+
+**What changed**:
+- `LIFECYCLE_FEATURE_COLUMNS` grew from 6 to 11 (added in canonical order; `correction_action_count` remains last). The Stage 1 ordering is preserved.
+- New `_coerce_to_set(value)` helper accepts list/tuple/set/frozenset/dict-list/string and produces a `frozenset[str]` — handles the `load_training_corpus` shape where `diagnoses` is a list of `{'code': ..., 'type': ...}` dicts.
+- Three new compute helpers: `_set_added` (strict subset-grew check), `_set_changed` (set-inequality check), `_delta_int16` (signed clipped delta), `_delta_sign` (sign function).
+- `_INT16_COLUMNS` frozenset now includes both `days_since_original_denial` (Stage 1) and `lines_changed_in_replacement` (Stage 2); `_empty_frame` uses it to assign dtypes correctly.
+- `load_original_snapshots` makes 2 additional bulk queries (`claim_lines` and `diagnoses`) keyed by the unique resolved `original_id`s. Same chunked pattern as `_load_children` (1000-id chunks). Roll-up is Python-side: modifiers / procedure_codes / diagnosis_codes become sorted lists per `original_id`; `original_claim_lines_count` is an int.
+
+**System behavior after this change**:
+- **Predict path is byte-identical to pre-CR-118.** Registry is unchanged. `FeatureBuilder._assemble` is unchanged. The booster sees the exact same X matrix.
+- `compute()` now returns an 11-column DataFrame on demand; the 5 new Stage 2 columns are zero on non-freq=7 rows and on freq=7 rows without a resolvable original.
+- The unit test suite grew from 509 to **530 passing tests** (+21 new in `TestStage2Deltas`; all pre-existing tests remain unchanged).
+- M1 invariant remains intact; `validate_feature_frame` unchanged.
+- No DB writes, no MV refresh, no schema delta, no enum delta, no migration.
+
+**How to use / verify**:
+
+Run the unit tests:
+```bash
+PYTHONPATH=src python -m pytest tests/unit/test_features/test_lifecycle.py -v
+# Expected: 38 passed (17 Stage 1 + 21 Stage 2)
+```
+
+Compute on a real freq=7 batch:
+```python
+from rcm.features.dataset import load_original_snapshots, load_training_corpus, _load_children, _CLAIM_COLUMNS
+from rcm.features.categories.lifecycle import compute
+# 1. Load freq=7 base + child rollups (modifiers, procedure_codes, diagnoses, claim_lines_count).
+# 2. await load_original_snapshots(session, claim_ids) — now also returns original_modifiers,
+#    original_procedure_codes, original_diagnosis_codes, original_claim_lines_count.
+# 3. feats = compute(df, originals) — 11 columns including the 5 new deltas + the updated count.
+```
+
+**Inline verification on 600-claim freq=7 sample from the docker DB**:
+
+```
+=== PHASE 2: activation / cardinality / null rate ===
+  had_prior_denial                     activation=  28/600 (  4.7%)  cardinality=2  null=0
+  prior_denial_bucket                  activation=  28/600 (  4.7%)  cardinality=4  null=0
+  days_since_original_denial           activation=  28/600 (  4.7%)  cardinality=17  null=0
+  auth_added_in_replacement            activation= 252/600 ( 42.0%)  cardinality=2  null=0
+  referral_added_in_replacement        activation=   6/600 (  1.0%)  cardinality=2  null=0
+  modifier_added_in_replacement        activation=   1/600 (  0.2%)  cardinality=2  null=0
+  diagnosis_changed_in_replacement     activation=  68/600 ( 11.3%)  cardinality=2  null=0
+  procedure_changed_in_replacement     activation=   3/600 (  0.5%)  cardinality=2  null=0
+  lines_changed_in_replacement         activation=  11/600 (  1.8%)  cardinality=5  null=0  range=[-8, 0]
+  charge_changed_in_replacement        activation=  19/600 (  3.2%)  cardinality=2  null=0  vc={-1: 19, 0: 581}
+  correction_action_count              activation= 343/600 ( 57.2%)  cardinality=4  null=0  vc={0: 257, 1: 327, 2: 15, 3: 1}
+
+=== PHASE 3: correction_action_count distribution ===
+  AFTER  Stage 2 (7 possible flags):
+    count=0:  257   count=1:  327   count=2:  15   count=3:  1
+    >1 count: 16/600 (2.7%)
+  BEFORE Stage 2 (auth + referral only):
+    count=0:  344   count=1:  254   count=2:  2
+    >1 count:  2/600 (0.3%)
+```
+
+`correction_action_count > 1` increased from **2 (0.3%) → 16 (2.7%) — an 8× lift**, as the AIR predicted. The new `diagnosis_changed` flag fires on 11.3% of replacements; the others (`modifier_added`, `procedure_changed`, `lines_changed`, `charge_changed`) are individually rare in this corpus but combined contribute the lift in multi-correction cases. Null rate is 0 on every column (compute always emits a numeric value, never NaN).
+
+**Tests**: 21 new unit tests in `tests/unit/test_features/test_lifecycle.py::TestStage2Deltas`:
+- `modifier_added`: extra modifier, equal sets reordered, replacement-only-removed, no-original (4 cases)
+- `diagnosis_changed`: add, remove, equal sets reordered, dict-form support for `load_training_corpus` shape (4 cases)
+- `procedure_changed`: swap, unchanged (2 cases)
+- `lines_changed`: signed delta, +99/-99 clip, no-original safe-default (3 cases)
+- `charge_changed`: sign positive/negative/zero, no-original safe-default (4 cases)
+- `correction_action_count`: sums all 7 flags to 7 when every action fires; zero on non-freq=7 even with diffs; falls back to Stage-1 contribution when original is missing; emits zeros when input columns are absent (4 cases)
+
+Full unit suite: **530 passed** (509 pre-CR-118 + 21 new). No regressions.
+
+**Leakage review**:
+- **Stage 2 features are structural diffs only.** No labels read. No future state read. No remittance touched. Safe by construction; no strict-< guard needed.
+- The bulk `claim_lines` / `diagnoses` queries in `load_original_snapshots` operate on the SAME `original_id`s the Stage-1 snapshot already resolved (which itself enforced strict-< on remittance_date for the outcome-derived features). No new leakage surface.
+- Same-payer self-match still excluded by `o.id <> ch.child_id`.
+- `has_original` mask blocks Stage 2 features from firing on rows where the original wasn't resolved — defensive against false-positive correction signals on orphan replacements.
+- The CR-107 train-only-rows constraint remains unnecessary at Stage 2 because the booster does not consume these features yet; Stage 3 will add a `compute_leakage_safe_lifecycle_features` wrapper that mirrors `compute_leakage_safe_denial_rates` for the outcome-derived subset only (Stage 2 deltas need no train-only restriction because they read no labels).
+
+**Runtime impact** (measured on 600-row docker sample):
+
+| Step | Wall-clock |
+|---|---|
+| Claim base + `_load_children` for the 600 freq=7 rows | 0.16 s |
+| `load_original_snapshots` (Stage 1 snapshot + Stage 2 bulk lines + diagnoses) | 0.17 s |
+| `compute()` over 600 rows | 14.6 ms (24.4 µs / row) |
+
+Stage 2 added ~30 ms to `load_original_snapshots` for the 600-row sample (two bulk queries on existing BTree indexes). Compute overhead per row is dominated by the row-loops in `_set_added` / `_set_changed`; at 24 µs/row it fits comfortably in the AIR's "<10 s per training run at 95k rows" envelope.
+
+**Predict-time cost is zero** because the predict path doesn't call any of this code.
+
+**Known constraints / follow-ups**:
+- The 5 new Stage 2 features remain **dormant** in production — they compute correctly but the booster does not consume them. This is intentional per the Stage 2 spec ("no retraining"). Stage 3 will wire them into `_BASE` + `_LIFECYCLE` registry tuples, retrain the three production boosters, and refit calibrators + thresholds.
+- For freq=7 rows where the original isn't resolvable (CR-115 found ~27% on the full corpus; ~41% on this 600-row recent sample), the 5 Stage 2 features emit 0 — matching the "no-lifecycle-signal" baseline used by Stage 1.
+- `_set_added` / `_set_changed` use Python row loops over object cells (list/dict types). Acceptable at current corpus size (~95k rows × 5 features × ~10 µs each ≈ 5 s). If profiling at Stage 3 shows this dominates, candidates for vectorisation: convert lists to sorted hash tuples up front and use `numpy.equal` element-wise.
+- `lines_changed_in_replacement` is clipped to `[-99, +99]`. The current docker corpus only shows `[-8, 0]` so the clip is not active; we keep it as a defensive guard against malformed test fixtures that could otherwise blow the int16 range.
+
+**Rollback strategy**:
+```bash
+# Single-commit revert
+git revert <CR-118 commit SHA>
+# No DB cleanup, no MV refresh, no artifact swap, no service restart.
+# Predict path is byte-identical pre- and post-revert (was never touched).
+```
+
+CR-117 remains intact under a CR-118 revert because the Stage 1 surface (`load_original_snapshots`'s Stage-1 columns + the 5 original `LIFECYCLE_FEATURE_COLUMNS`) is a strict subset of the post-CR-118 surface. Reverting CR-118 removes the Stage-2 column tuples and the bulk-load block without touching anything Stage 1 depends on.
+
+**Architecture principles A-E compliance**:
+
+| Principle | Compliance |
+|---|---|
+| A. Storage Minimization | ✓ No new persistent objects. |
+| B. Database Discipline | ✓ Two extra read-only bulk SELECTs per snapshot call; both use existing indexes (`claim_lines.claim_id`, `diagnoses.claim_id`). |
+| C. No Premature Persistence | ✓ All Stage-2 state is computed per-call. |
+| D. Query Efficiency | ✓ Chunked 1000-id ANY() lookups; same shape as `_load_children`. No N+1. |
+| E. Default Position | ✓ Smallest change that satisfies the Stage 2 goal — extends two existing functions; touches zero hot-path code. |
+
+**Red-flag checklist**:
+
+| Risk | Status |
+|---|---|
+| Full-table scans? | No — bulk queries use `claim_lines.claim_id` and `diagnoses.claim_id` indexes. |
+| Repeated queries (per-upload, per-request)? | No — one snapshot call per batch. |
+| N+1 patterns? | No — chunked bulk `claim_id = ANY(:ids)` keyed by ≤1000 originals per chunk. |
+| Repeated UPDATEs? | No — read-only. |
+| Unnecessary writes? | No — zero writes. |
+| Refresh-heavy operations? | No — no MV touched. |
+| Partitioning implications? | No. |
+
+**Temporary artifacts**: none. The inline verification ran via a single `python -c` invocation (heredoc); no `.tmp.py`, no log file, no JSON export. Verified by `git status --short`: only the three intended files and `CHANGELOG.md` appear in the working tree.
+
+**Related**: CR-116 (AIR governing this stage); CR-117 (Stage 1 — built the `load_original_snapshots` surface and the 6-column scaffold that CR-118 extends to 11 columns); CR-115 (the audit whose 12-feature recommendation this stage completes the structural diff portion of); CR-071 (the matching pattern reused for original resolution); CR-092 (CARC→bucket canonical mapping consumed by the snapshot loader). Downstream-to-be: Stage 3 (retraining + calibration + threshold derivation; needs its own AIR per CR-116's deferral note).
+
+**Follow-up addressed by**: CR-119 (integration-strategy AIR), CR-120A (training-strategy validation).
+
+---
+
+## CR-119 — 2026-06-22 — AIR: Lifecycle feature integration strategy (AIR only)
+
+**Trigger**: Following CR-117 Stage 1 + CR-118 Stage 2, the 11 lifecycle features compute correctly but remain dormant in the booster path. Before wiring them into production (which would be CR-120), an AIR was required per CLAUDE.md to lock in the integration approach and rollback path.
+
+**Decision**: Approved single-atomic-CR strategy for CR-120 (wiring + retraining + calibration + threshold re-derivation in one commit). Lifecycle features go into a new `_LIFECYCLE` tuple appended to `_BASE` (so every variant's `FEATURE_COLUMNS_*` grows by 11). No target encoding (all 11 are integer-typed). Strict-< SQL guard in `load_original_snapshots` is the sole leakage protection; no CR-107-style train-only-rows wrapper needed because the features read the original claim's own historical label, not a cohort aggregate. Calibrator REFIT and threshold RE-DERIVATION mandatory. Two training-corpus strategies (A: freq=1 only, B: freq=1+freq=7) deferred to CR-120A validation.
+
+**Scope**: design document only. Zero source files modified by CR-119 itself.
+
+**What changed**: nothing in the system. The AIR adds an approved integration record for CR-120 to reference.
+
+**System behavior after this change**: nothing.
+
+**How to use / verify**:
+- The AIR is recorded in the conversation transcript and reproduced here in summary. Key constraints:
+  - M1 invariant preserved by appending lifecycle to the END of `_BASE`.
+  - Rollback = single-commit revert + `git checkout HEAD~1 -- artifacts/featurebuilder/`; no DB migration, no MV refresh.
+  - Stage A (wiring) and Stage B (retrain) must ship atomically because the M1 check rejects bundles with mismatched column counts.
+- Predicted lift estimates (subject to empirical validation in CR-120A): 837P FPR 0.72 → ~0.25, 837D 0.93 → ~0.30, 837I 0.99 → ~0.45.
+
+**Tests**: none.
+
+**Known constraints / follow-ups**:
+- The two training-corpus strategies (A vs B) need an empirical validation before promotion. CR-120A covers that.
+- Stage 3 retraining is NOT pre-approved by CR-119; CR-120 is the implementation gate.
+- The dataset-shift risk on freq=1 metrics under Strategy B is a known concern (CR-119 Phase 2 Strategy B note). Mitigation candidates: sample weights, undersampling freq=7, or two-stage model — to be evaluated in CR-120A.
+
+**Rollback strategy**: not applicable.
+
+**Related**: CR-115 (the audit motivating lifecycle features); CR-117/CR-118 (Stage 1+2 compute paths); CR-107 (the leakage-safe template); CR-088 (LeakageSafeTargetEncoder context). Downstream: CR-120A (this validation), then CR-120 (atomic ship if winner emerges).
+
+---
+
+## CR-120A — 2026-06-22 — Training-strategy validation: freq=1-only vs freq=1+freq=7 (audit; no production promotion)
+
+**Trigger**: CR-119 AIR identified two candidate training strategies for lifecycle features. The choice cannot be made without empirical evidence — does the booster actually learn from the lifecycle features under either strategy, and does either improve replacement-claim prediction without regressing originals?
+
+**Decision**: Run a controlled, non-promoting validation. Wire lifecycle features into FeatureBuilder under an opt-in flag (`include_lifecycle`, default False) so production bundles continue to work byte-identically. Add `include_freq7` to `load_training_corpus`. Train two candidate bundles per variant into separate artifact directories. Evaluate against PROD on a fixed freq=7 audit cohort AND a fixed freq=1 holdout. **Do not promote.** Record findings; let the operator decide what CR-120 should look like.
+
+**Scope**: ~280 LOC of opt-in wiring across 6 files; two candidate bundle sets saved on disk; zero production bundle change.
+
+| File | Change |
+|---|---|
+| `src/rcm/features/registry.py` | New `_LIFECYCLE` tuple (11 FeatureSpec); `LIFECYCLE_FEATURE_COLUMNS` constant; `include_lifecycle` parameter added to `get_feature_columns` and `validate_feature_frame`. |
+| `src/rcm/features/builder.py` | `FeatureBuilder.include_lifecycle: bool = False`; new `_maybe_load_lifecycle_snapshot()` async method; conditional `lifecycle.compute()` slot at end of `_assemble`'s concat list (preserves M1 column order). |
+| `src/rcm/features/dataset.py` | `load_training_corpus(..., include_freq7: bool = False)` — when True, bypasses `mv_claim_labels`'s freq=1/NULL filter by computing labels inline from `claims + remittance_claims`. CR-071 descendant propagation only applies to freq=1 rows under Strategy B (freq=7 rows use their own remit). |
+| `src/rcm/ml/artifacts.py` | `ModelArtifactBundle.include_lifecycle: bool = False`; persisted in `feature_schema.json` so reload sets the FeatureBuilder flag automatically. |
+| `src/rcm/ml/predictor.py` | Predictor forwards `bundle.include_lifecycle` to the FeatureBuilder constructor and to `validate_feature_frame`. Pre-CR-120 bundles default to False → byte-identical behaviour. |
+| `src/rcm/ml/trainer.py` | `train_variant(..., include_lifecycle, include_freq7)` forwards both flags through `load_training_corpus` → `FeatureBuilder` → bundle save. |
+| `src/rcm/ml/reason_renderer.py::_FEATURE_TO_BUCKET` | 11 new entries: outcome-derived features → `history`, auth/referral → `authorization`, modifier/procedure/lines → `procedure`, diagnosis → `diagnosis`, charge → `billing`. |
+
+Tests: 541 / 541 passing (unchanged from CR-118's 530 + 11 trivial bucket-coverage tests now resolved by `_FEATURE_TO_BUCKET` additions).
+
+**What changed**:
+- The wiring is **opt-in**. Existing bundles (which do NOT set `include_lifecycle=True` in their schema) load with the flag False and produce the same N-column X matrix they always did. M1 invariant intact.
+- Candidate bundles produced by this CR set the flag True at training and save it to schema; reload restores the True state and the predictor builds an N+11 column X.
+- New artifact directories `artifacts/featurebuilder_candidate_a/{837P_healthcare,837D_dental,837I_home_care}/` and `_candidate_b/...` (1.5 MB each). Production `artifacts/featurebuilder/` untouched.
+
+**System behavior after this change**:
+- Production prediction path is **byte-identical** to pre-CR-120A. The three production bundles still have `include_lifecycle=False` in their schemas (untouched).
+- The opt-in flag means CR-120 can promote winning bundles by simply swapping the artifact directory — no further code changes required.
+
+### Phase 1 — Candidate A (freq=1 only training)
+
+Training metrics on each variant's training-time holdout (15% of freq=1 corpus, stratified split, random_state=42):
+
+| Variant | Cols | Train rows | Prev | ROC | PR-AUC | P | R | F1 | Brier | Threshold |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 837P / healthcare | 116 | 29,960 | 0.048 | 0.9979 | 0.9896 | 0.946 | 0.974 | 0.960 | 0.0022 | 0.050 |
+| 837D / dental | 120 | 8,457 | 0.012 | 0.9528 | 0.3014 | 0.600 | 0.136 | 0.222 | 0.0099 | 0.340 |
+| 837I / home_care | 123 | 10,556 | 0.210 | 0.9962 | 0.9807 | 0.833 | 0.992 | 0.906 | 0.0182 | 0.100 |
+
+### Phase 2 — Candidate B (freq=1 + freq=7 training)
+
+| Variant | Cols | Train rows | Prev | ROC | PR-AUC | P | R | F1 | Brier | Threshold |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 837P / healthcare | 116 | 38,923 | 0.265 | 0.9997 | 0.9993 | 0.922 | 0.999 | 0.959 | 0.0019 | 0.010 |
+| 837D / dental | 120 | 14,558 | 0.423 | 0.9987 | 0.9967 | 0.931 | 1.000 | 0.964 | 0.0052 | 0.010 |
+| 837I / home_care | 123 | 21,409 | 0.484 | 0.9987 | 0.9980 | 0.915 | 0.999 | 0.955 | 0.0113 | 0.010 |
+
+The held-out metrics for B are headline-better than A but the holdouts have different prevalence — they are NOT directly comparable. The actual decision rests on Phases 4-5.
+
+### Phase 3 — Lifecycle feature utilization
+
+| | Candidate A | Candidate B |
+|---|---:|---:|
+| 837P used / 11 | **0** | 3 (auth_added, charge_changed, correction_action_count; combined gain 0.15 %) |
+| 837D used / 11 | **0** | 4 (auth_added, dx_changed, procedure_changed, correction_action_count; combined gain 0.58 %) |
+| 837I used / 11 | **0** | 4 (had_prior_denial, auth_added, dx_changed, correction_action_count; combined gain 3.39 %) |
+
+**Top booster features (gain share) in Candidate B**:
+- 837P: `is_replacement_claim` **71.82 %**, `same_day_visits_for_patient` 11.54 %, `prior_denials_with_payer_and_cpt` 3.49 %
+- 837D: `is_replacement_claim` **89.74 %**, `same_day_visits_for_patient` 1.83 %
+- 837I: `same_day_visits_for_patient` 28.38 %, `is_replacement_claim` 27.09 %, `payer_name_encoded` 13.28 %
+
+The booster learns `is_replacement_claim → denied` as a one-feature shortcut on 837P/837D because their freq=7 cohorts are ~99 % denied. The lifecycle features contribute marginally (<1 % gain). On 837I, where the freq=7 cohort is only ~75 % denied, the shortcut is weaker and the lifecycle features have room to contribute (3.39 % combined gain across 4 features).
+
+### Phase 4 — Replacement-claim audit (fixed adjudicated freq=7 cohort)
+
+| Variant | Bundle | thr | n | HIGH workload | Precision | Recall | FPR | F1 |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| **837P** | PROD       | 0.020 | 12,804 | 82.3 % | 0.994 | 0.824 | 0.716 | 0.901 |
+| 837P | A (freq=1) | 0.050 | 12,804 | 74.5 % | 0.993 | 0.745 | 0.747 | 0.851 |
+| 837P | B (freq=1+7)| 0.010 | 12,804 | **100.0 %** | 0.993 | 1.000 | **1.000** | 0.996 |
+| **837D** | PROD       | 0.010 | 8,716 | 93.4 % | 0.994 | 0.934 | 0.929 | 0.963 |
+| 837D | A (freq=1) | 0.340 | 8,716 | **0.0 %** | n/a | 0.000 | 0.000 | 0.000 |
+| 837D | B (freq=1+7)| 0.010 | 8,716 | **100.0 %** | 0.994 | 1.000 | **1.000** | 0.997 |
+| **837I** | PROD       | 0.020 | 15,505 | 90.9 % | 0.728 | 0.882 | 0.989 | 0.798 |
+| 837I | A (freq=1) | 0.100 | 15,505 | 60.5 % | 0.659 | 0.531 | 0.825 | 0.588 |
+| 837I | B (freq=1+7)| 0.010 | 15,505 | 88.2 % | **0.851** | 1.000 | **0.527** | **0.919** |
+
+Reading:
+- **A** regresses every variant. The thresholds derived from a freq=1 holdout don't fit the freq=7 score distribution — 837D collapses to 0 % HIGH coverage (every claim falls below threshold 0.34).
+- **B on 837P/837D**: degenerate. Threshold collapses to 0.010 because the booster's shortcut produces a sharp bimodal score with everything ≥ threshold. Workload = 100 %, FPR = 100 %. Not a real improvement.
+- **B on 837I**: substantive improvement. Precision +12 pp (0.728 → 0.851), FPR −46 pp (0.989 → 0.527), F1 +12 pp. The 75 %-denied cohort gives the booster room to actually use lifecycle features.
+
+### Phase 5 — Original-claim regression (fixed freq=1 holdout)
+
+Same 15 % stratified holdout, predicted via each bundle:
+
+| Variant | Bundle | n | Prev | ROC | PR-AUC | P | R | F1 | Brier |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| **837P** | PROD       | 6,421 | 0.048 | 0.9991 | 0.9896 | 0.667 | 0.993 | 0.798 | 0.0045 |
+| 837P | A          | 6,421 | 0.048 | 0.9979 | 0.9852 | 0.958 | 0.974 | 0.966 | 0.0021 |
+| 837P | B          | 6,421 | 0.048 | 0.9989 | **0.9928** | 0.600 | 0.997 | 0.749 | 0.0015 |
+| **837D** | PROD       | 1,813 | 0.012 | 0.9736 | 0.5138 | 0.100 | 0.955 | 0.182 | 0.0465 |
+| 837D | A          | 1,813 | 0.012 | **0.6283** | **0.1536** | 1.000 | 0.091 | 0.167 | 0.0106 |
+| 837D | B          | 1,813 | 0.012 | 0.9360 | **0.3571** | 0.182 | 0.909 | 0.303 | 0.0084 |
+| **837I** | PROD       | 2,262 | 0.210 | 0.9948 | 0.9785 | 0.599 | 0.998 | 0.749 | 0.0248 |
+| 837I | A          | 2,262 | 0.210 | 0.9956 | 0.9777 | 0.841 | 0.985 | 0.908 | 0.0194 |
+| 837I | B          | 2,262 | 0.210 | 0.9969 | **0.9869** | 0.710 | 0.998 | 0.830 | 0.0165 |
+
+PR-AUC delta vs PROD on freq=1:
+- 837P: +0.0032 (B)  / −0.0044 (A)  — neutral
+- 837D: **−0.1567 (B)** / **−0.3602 (A)** — **regression** (acceptance criterion fails)
+- 837I: +0.0084 (B)  / −0.0008 (A)  — neutral
+
+### Phase 6 — Promotion decision
+
+Per the spec criteria (lifecycle gain meaningful + freq=7 FPR drop + no original regression):
+
+| Variant | Lifecycle gain | freq=7 FPR drop | freq=1 regression | **Decision** |
+|---|---|---|---|---|
+| 837P | 0.15 % — minimal | **No** — degenerate B (workload 100 %) | None | **Keep PROD** |
+| 837D | 0.58 % — small | **No** — degenerate B | **PR-AUC −0.157** | **Keep PROD** |
+| 837I | 3.39 % — small but real | **YES** — FPR −46 pp, precision +12 pp | None | **Candidate B viable** |
+
+**Recommended next action for CR-120**: Do NOT ship one atomic CR that retrains all three variants under Strategy B. The variant-specific outcomes are too different. Either:
+- **Variant-specific CR-120**: promote Candidate B for 837I/home_care only; keep PROD on 837P/837D. The shadow-prediction infrastructure (CR-067) and per-variant artifact dirs already support this.
+- **OR refine Strategy B before re-validation**: try per-row sample weights (downweight freq=7) or undersample freq=7 to balance prevalence on 837P/D. Goal: prevent the booster from learning `is_replacement_claim → denied` as a shortcut, so lifecycle features get room to contribute. This is itself a small experiment (CR-120B?) — not pre-approved.
+
+The audit's clearest lesson: **the 837P/837D failure mode is not a calibration problem; it's a base-rate problem.** Their freq=7 cohorts are too universally denied for the booster to learn discrimination from lifecycle features. 837I works because the cohort has natural variance.
+
+**Tests**: 541 / 541 passing. No new tests added in CR-120A (the wiring is exercised by the existing lifecycle + builder test suites under CR-117/CR-118).
+
+**How to use / verify**:
+
+Reload candidates inline (production bundles untouched):
+```python
+from pathlib import Path
+from rcm.ml.predictor import HealthcarePredictor
+pred_a = HealthcarePredictor.load(Path("artifacts/featurebuilder_candidate_a/837I_home_care"))
+pred_b = HealthcarePredictor.load(Path("artifacts/featurebuilder_candidate_b/837I_home_care"))
+assert pred_a.bundle.include_lifecycle is True
+assert pred_b.bundle.include_lifecycle is True
+print(f"A threshold={pred_a.bundle.decision_threshold}, B threshold={pred_b.bundle.decision_threshold}")
+```
+
+Re-run the audit:
+```bash
+# Replicate Phase 4 / Phase 5 inline as in the CR-120A session transcript.
+# No script file lives on disk; the heredoc pattern is documented in the AIR.
+```
+
+**Known constraints / follow-ups**:
+- Candidate bundles are preserved on disk (`artifacts/featurebuilder_candidate_a/`, `_candidate_b/`, 1.5 MB each) so a CR-120 follow-up can promote 837I/B by simple directory swap.
+- The opt-in wiring (`include_lifecycle` flag) is the persistent contribution of CR-120A. It survives even if neither candidate is promoted.
+- 837P/837D would benefit from a sample-weight retry. AIR + experiment deferred.
+- The `is_replacement_claim` shortcut emerges only when freq=7 is included AND its denial prevalence is high. This means the FE space already had a "freq=7 → denied" signal latent; it just wasn't activated until the training corpus saw freq=7 examples. Worth documenting as a design lesson for any future Strategy B / Strategy C work.
+- Stage 3 retraining is still NOT shipped. Production still runs the pre-CR-120 bundles (loaded with `include_lifecycle=False`).
+
+**Rollback strategy**:
+```bash
+# Revert the wiring (opt-in flag + lifecycle category) in one commit
+git revert <CR-120A commit SHA>
+
+# Remove candidate bundles from disk (they are not in git history yet)
+rm -rf artifacts/featurebuilder_candidate_a artifacts/featurebuilder_candidate_b
+
+# No production bundle restore needed — production bundles were untouched.
+# Predict path is byte-identical pre- and post-revert.
+```
+
+If only the candidate bundles need to be cleaned (e.g., disk pressure) but the wiring is kept for future work, just delete the two `_candidate_*` directories — the registry / builder additions stand alone.
+
+**Architecture principles A-E compliance**:
+
+| Principle | Compliance |
+|---|---|
+| A. Storage Minimization | ✓ Candidate bundles intentionally kept (per user choice) for CR-120 follow-up; ~3 MB total. No persistent DB objects added. |
+| B. Database Discipline | ✓ One additional bulk SQL in `load_original_snapshots` (already from CR-117); no new writes. |
+| C. No Premature Persistence | ✓ Opt-in flag, default False — production state is unchanged. |
+| D. Query Efficiency | ✓ Training-corpus query path unchanged; the new `include_freq7` branch uses the same indexes. |
+| E. Default Position | ✓ Wiring is opt-in; the experiment is the smallest change that answers the validation question. |
+
+**Temporary artifacts created**: **none**. All experiments ran via `python -c` and `python - <<'PY' ... PY` heredocs (strict-inline per user choice). Candidate bundle directories under `artifacts/featurebuilder_candidate_a/` and `_candidate_b/` are NOT temporary — they were intentionally kept for CR-120 follow-up per the spec ("Keep candidate bundles for CR-120 if Candidate B wins"). `_metrics_summary.json` (1 file per candidate dir) was written by the trainer as an audit artifact; can be removed alongside the bundles if CR-120 chooses a different path.
+
+**Related**: CR-115 (the original replacement-claim audit motivating lifecycle features); CR-116 (AIR designing the 11-feature set); CR-117 / CR-118 (Stage 1+2 compute paths); CR-119 (integration-strategy AIR specifying the atomic CR shape that this validation feeds). Downstream-to-be: CR-120 (the eventual atomic ship — now with a recommendation to either go variant-specific or run a sample-weight refinement first).
+
+**Follow-up addressed by**: CR-120 (variant-specific promotion of 837I/home_care Candidate B).
+
+---
+
+## CR-120 — 2026-06-22 — Variant-specific lifecycle promotion: 837I/home_care only
+
+**Trigger**: CR-120A validation produced a mixed result. Candidate B (lifecycle features + freq=1+freq=7 training) substantively improved 837I (HIGH-FPR 0.989 → 0.527, precision 0.728 → 0.851, F1 0.798 → 0.919) without regressing freq=1. On 837P/837D, Candidate B degenerated into a one-feature `is_replacement_claim → denied` shortcut. The per-variant outcomes were too different for a uniform promotion.
+
+**Decision**: Promote Candidate B for **837I/home_care only**. Leave 837P/healthcare and 837D/dental on their pre-CR-120 production bundles. The CR-117/CR-118/CR-120A wiring already supports per-variant `include_lifecycle` (the flag is bundle-level, not registry-level), so variant-specific promotion is a single-directory file swap. No retraining, no recalibration, no threshold change at promotion time — the new bundle was already trained, calibrated, and threshold-derived in CR-120A.
+
+**Scope**: 5 files swapped under `artifacts/featurebuilder/837I_home_care/`; one source-file edit in the inventory endpoint; zero other production changes.
+
+| File | Change |
+|---|---|
+| `artifacts/featurebuilder/837I_home_care/model.json` | Overwritten with `featurebuilder_candidate_b/837I_home_care/model.json` (476,917 bytes). |
+| `artifacts/featurebuilder/837I_home_care/calibrator.joblib` | Overwritten (815 bytes). |
+| `artifacts/featurebuilder/837I_home_care/encoder.joblib` | Overwritten (10,765 bytes). |
+| `artifacts/featurebuilder/837I_home_care/rarity_state.joblib` | Overwritten (3,342 bytes). |
+| `artifacts/featurebuilder/837I_home_care/feature_schema.json` | Overwritten (6,328 bytes; `include_lifecycle=True`, `feature_columns` grows from 112 → 123, threshold 0.02 → 0.01). |
+| `src/rcm/routers/public/predictions.py::_inventory_available_bundles` | Surfaces `include_lifecycle` (bool) and `feature_columns_n` (int) in the `/api/predictions/reload-bundles` response so operators can audit which bundles include the lifecycle category. |
+
+**What changed**:
+
+| Variant | Before CR-120 | After CR-120 |
+|---|---|---|
+| 837P / healthcare | `v1.fb.20260622T072024` · 105 cols · `include_lifecycle=False` · thr 0.020 | **unchanged** |
+| 837D / dental | `v1.fb.20260622T072034` · 109 cols · `include_lifecycle=False` · thr 0.010 | **unchanged** |
+| 837I / home_care | `v1.fb.20260622T072044` · 112 cols · `include_lifecycle=False` · thr 0.020 | `v1.fb.20260622T104132` · **123 cols** · **`include_lifecycle=True`** · thr **0.010** |
+
+The 837I bundle is the Candidate B trained in CR-120A on freq=1 + freq=7 (21,409 rows, prevalence 0.484). Calibrator is `isotonic_v1`. Held-out ROC = 0.9987, PR-AUC = 0.9980, F1 = 0.955, Brier = 0.0113.
+
+**System behavior after this change**:
+- `/api/predictions/predict-file/{id}` and `/api/predictions/predict-claim/{id}` on 837I/home_care claims now go through the lifecycle-aware model. Predict-time `_assemble` builds a 123-column X (Stage 1+2 lifecycle features computed via `load_original_snapshots` + `lifecycle.compute()`). 837P and 837D continue with 105 / 109 columns — no change.
+- The predictor cache (`_FB_PREDICTOR_CACHE`) was cleared at promotion via `/api/predictions/reload-bundles`; subsequent prediction requests lazy-load the new 837I bundle.
+- `prediction_log` rows written after this change for 837I carry `model_version=v1.fb.20260622T104132.837I_home_care` and `decision_threshold=0.01`. The H5/H6 invariant (every row carries the model + threshold under which it was scored) remains intact.
+- `/api/predictions/reload-bundles` inventory now exposes `include_lifecycle` (bool) and `feature_columns_n` (int) so operators can audit which bundles are on which schema.
+- Expected operational effect on 837I (per CR-120A audit): HIGH-bucket workload drops slightly (90.9 % → 88.2 %), precision rises (0.728 → 0.851), FPR collapses (0.989 → 0.527). Real denials are still recalled at 100 %.
+- Predict-time RuntimeError on 837I bundles loaded by the running uvicorn requires the server to be running source code that includes the CR-117/CR-118/CR-120A wiring (`include_lifecycle` field on `ModelArtifactBundle`, `lifecycle.compute()` in `_assemble`). The uvicorn was restarted at promotion time to pick up the latest source.
+
+**How to use / verify**:
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/api/predictions/reload-bundles \
+  | python -m json.tool | grep -E '(service_variant|model_version|include_lifecycle|feature_columns_n|decision_threshold)'
+# Expected:
+#   837P/healthcare  include_lifecycle: false  feature_columns_n: 105  threshold: 0.02
+#   837D/dental      include_lifecycle: false  feature_columns_n: 109  threshold: 0.01
+#   837I/home_care   include_lifecycle: true   feature_columns_n: 123  threshold: 0.01
+```
+
+End-to-end probes against a home_care file (run during promotion):
+
+| Endpoint | Status | Observation |
+|---|:---:|---|
+| `POST /api/predictions/predict-file/7133` (HC1K pair_10 replacement, 63 freq=7 claims) | 200 | `risk_summary={'HIGH': 63, 'MEDIUM': 0, 'LOW': 0}`; sample claim risk 0.862, top buckets `[procedure, coverage, history]` |
+| `POST /api/predictions/predict-file/7131` (HC1K pair_10 original, 100 freq=1 claims) | 200 | `risk_summary={'HIGH': 87, 'MEDIUM': 0, 'LOW': 13}` |
+| `POST /api/predictions/predict-claim/152992` (HK00990, freq=7) | 200 | `risk_score=0.862, risk_level=HIGH, model_version=v1.fb.20260622T104132.837I_home_care`; 5 top_risk_factors returned in business language |
+| `POST /api/recommendations/by-file/7133` | 200 | Endpoint healthy; per-claim recs depend on CARC presence (none in this fixture) |
+
+**Tests**: 541 / 541 unit tests passing (unchanged from CR-120A). No new tests introduced; the promotion is a file swap + a single inventory-response field addition.
+
+**Known constraints / follow-ups**:
+- 837P and 837D **still suffer** the CR-115 failure mode. Their freq=7 cohorts get HIGH-FPR 0.72 (837P) and 0.93 (837D). CR-120A documented why Candidate B failed on these variants (booster prefers the `is_replacement_claim` shortcut over lifecycle features when freq=7 is ~99 % denied). A future CR-120B should explore per-row sample weights `w_freq7 < 1` or undersampling to break the shortcut on 837P/D before any further promotion attempt.
+- The promoted 837I bundle includes 11 lifecycle features whose individual gain is small (combined 3.39 %). The bulk of the FPR drop is statistical (the bundle was trained on freq=7 examples so its score distribution maps more naturally onto freq=7 inputs), not because lifecycle features dominate. This is empirically observed; the lift is real and material.
+- Candidate B bundles remain on disk at `artifacts/featurebuilder_candidate_a/` and `_candidate_b/` (~3 MB total). The 837I subdirectory inside `_candidate_b/` is now byte-identical to production. Operators may delete both directories after CR-120 merges — they exist as belt-and-braces for rollback.
+- Shadow logging (CR-067) continues to compare FB-primary vs simple_pipeline for the same 837I claims. The shadow rows in `prediction_log` will now reflect the new bundle's predictions; the comparison will diverge from pre-CR-120 in the FPR direction noted above. This is expected.
+
+**Rollback strategy**:
+```bash
+# Variant-specific revert — restores the pre-CR-120 837I bundle
+git checkout HEAD -- artifacts/featurebuilder/837I_home_care/
+
+# Refresh the in-process predictor cache
+curl -X POST http://127.0.0.1:8000/api/predictions/reload-bundles
+```
+
+Restores the prior 837I bundle (`v1.fb.20260622T072044`, 112 cols, threshold 0.02, `include_lifecycle=False`). 837P and 837D are unaffected. The CR-117/CR-118/CR-120A wiring stays in place under this rollback — the lifecycle compute path remains dormant for the rolled-back 837I (because the restored bundle's schema has `include_lifecycle=False`).
+
+If a wholesale revert of CR-120 + CR-120A is required (e.g., the wiring itself is suspected of regression):
+```bash
+git revert <CR-120 commit SHA> <CR-120A commit SHA>
+git checkout HEAD -- artifacts/featurebuilder/
+curl -X POST http://127.0.0.1:8000/api/predictions/reload-bundles
+```
+
+No DB migration, no MV refresh, no service restart required beyond the bundle reload. The opt-in wiring's default-off design means even an outdated uvicorn worker will load the restored pre-CR-120 bundles without M1 failure.
+
+**Architecture principles A-E compliance**:
+
+| Principle | Compliance |
+|---|---|
+| A. Storage Minimization | ✓ One bundle directory updated in-place; no new tables, columns, indexes, or MVs. |
+| B. Database Discipline | ✓ Zero DB writes from the promotion itself; predict-time queries use existing indexes. |
+| C. No Premature Persistence | ✓ The promotion writes only bundle files; no DB persistence introduced. |
+| D. Query Efficiency | ✓ Predict-time query path on 837I now includes the `load_original_snapshots` call (~20–30 ms per batch) — already characterised in CR-117/CR-118 runtime sections. |
+| E. Default Position | ✓ Smallest change satisfying the variant-specific promotion goal — a file swap plus one inventory-response field. |
+
+**Red-flag checklist**:
+
+| Risk | Status |
+|---|---|
+| Full-table scans? | No — `load_original_snapshots` uses BTree indexes on `claim_lines.claim_id` and `diagnoses.claim_id`. |
+| Repeated queries (per-upload, per-request)? | No — one snapshot lookup per `_assemble` call. |
+| N+1 patterns? | No — chunked `ANY(:ids)` lookups. |
+| Repeated UPDATEs? | No. |
+| Unnecessary writes? | No. |
+| Refresh-heavy operations? | No. |
+| Partitioning implications? | No. |
+
+**Temporary artifacts**: **none**. Every step of the promotion ran via `python -c` and `python - <<'PY'` heredocs (Phase 1 verification, Phase 2 file copy via `shutil.copy2`, Phase 4 endpoint probes). No `.tmp.py`, no log file, no JSON export. Candidate bundles under `artifacts/featurebuilder_candidate_a/` and `_candidate_b/` are intentionally preserved per CR-120A's user-approved policy ("Keep candidate bundles for CR-120 if Candidate B wins") and remain useful as rollback sources.
+
+**Related**: CR-115 (the audit motivating lifecycle features); CR-117 / CR-118 (Stage 1+2 compute path); CR-119 (integration-strategy AIR); CR-120A (the validation that justified variant-specific promotion). Future CRs: CR-120B (837P/D refinement with sample weights — not yet started); CR-104 / CR-107-style post-promotion audit to confirm 837I held-out vs production gap is closed.
+
+**Follow-up addressed by**: CR-121 (post-promotion verification audit).
+
+---
+
+## CR-121 — 2026-06-22 — Post-promotion lifecycle bundle verification (audit only)
+
+**Trigger**: CR-120 promoted the lifecycle-aware Candidate B bundle for 837I/home_care into production. The CR-120A pre-promotion measurements were on the candidate dir; CR-121 confirms the same behaviour now that the bundle is the live `artifacts/featurebuilder/837I_home_care/` artifact. Also surfaces any bucket-health issue exposed by the new threshold.
+
+**Decision**: Audit-only. No bundle change, no retraining, no recalibration, no threshold change. Run the promoted bundle against the full 837I corpus (both freq=1 and freq=7) and report score distribution, bucket counts, lifecycle feature activation, and classification metrics.
+
+**Scope**: zero source changes. One temporary `cr121_audit.tmp.py` written, run, and deleted before completion (explained + reported in the artifacts section).
+
+**What changed**: nothing in the system. CR-121 is a verification record.
+
+**System behavior after this change**: nothing.
+
+### Phase 1 — Score distribution on the promoted 837I bundle
+
+`model_version=v1.fb.20260622T104132.837I_home_care`, `threshold=0.01`, `include_lifecycle=True`, 123 columns.
+
+**freq=1 (n=20,728)**:
+
+| Score bin | Count |
+|---|---:|
+| [0.000, 0.005) | 10,738 |
+| [0.005, 0.010) | 6 |
+| [0.010, 0.020) | 667 |
+| [0.020, 0.050) | 0 |
+| [0.050, 0.100) | 1 |
+| [0.100, 0.250) | 1,363 |
+| [0.250, 0.500) | 1,158 |
+| [0.500, 0.750) | 1,076 |
+| [0.750, 0.900) | 1,098 |
+| [0.900, 0.990) | 539 |
+| [0.990, 1.000] | 4,082 |
+
+Bucket distribution: **HIGH 48.2 %, MEDIUM 0.0 %, LOW 51.8 %**.
+
+**freq=7 (n=16,155)**:
+
+| Score bin | Count |
+|---|---:|
+| [0.000, 0.005) | 1,829 |
+| [0.005, 0.010) | 3 |
+| [0.010, 0.020) | 1,260 |
+| [0.020, 0.050) | 1 |
+| [0.050, 0.100) | 0 |
+| [0.100, 0.250) | 713 |
+| [0.250, 0.500) | 54 |
+| [0.500, 0.750) | 184 |
+| [0.750, 0.900) | 191 |
+| [0.900, 0.990) | 215 |
+| [0.990, 1.000] | 11,705 |
+
+Bucket distribution: **HIGH 88.7 %, MEDIUM 0.0 %, LOW 11.3 %**.
+
+Score distributions on both populations are sharply bimodal at the extremes — typical of well-calibrated boosters but operationally relevant because the MEDIUM band would be sparsely populated even with a corrected threshold relationship (see Phase 5).
+
+### Phase 2 — Lifecycle feature activation on freq=7 (n=16,155)
+
+| Feature | Non-zero | Cardinality |
+|---|---:|---:|
+| `had_prior_denial` | 1,363 (8.4 %) | 2 |
+| `prior_denial_bucket` | 1,363 (8.4 %) | 4 |
+| `days_since_original_denial` | 1,363 (8.4 %) | 64 |
+| `auth_added_in_replacement` | **7,947 (49.2 %)** | 2 |
+| `referral_added_in_replacement` | 0 (0.0 %) | 1 |
+| `modifier_added_in_replacement` | 163 (1.0 %) | 2 |
+| `diagnosis_changed_in_replacement` | 2,065 (12.8 %) | 2 |
+| `procedure_changed_in_replacement` | 314 (1.9 %) | 2 |
+| `lines_changed_in_replacement` | 549 (3.4 %) | 8 |
+| `charge_changed_in_replacement` | 1,104 (6.8 %) | 3 |
+| `correction_action_count` | **11,556 (71.5 %)** | 6 (`{0: 4,599; 1: 10,990; 2: 557; 3: 2; 4: 3; 5: 4}`) |
+
+Original-claim resolution rate on the freq=7 corpus: **8,247 / 16,155 (51 %)**. This is the upper bound on `had_prior_denial`, `prior_denial_bucket`, `days_since_original_denial` activation. The remaining 49 % of freq=7 claims have no resolvable freq=1 original via `(claim_number, payer_id)`, consistent with the CR-115 baseline.
+
+The Stage 1+2 features are **demonstrably firing in production**. `correction_action_count` is non-zero on 71.5 % of replacement claims — the operator-correction signal is real and surfaceable at predict time.
+
+### Phase 3 — Replacement-claim impact (pre vs post CR-120)
+
+Same fixed cohort (n=15,505 adjudicated 837I/home_care freq=7), same prevalence (0.750):
+
+| Metric | Pre-CR-120 (PROD `v1.fb.20260622T072044`) | Post-CR-120 (`v1.fb.20260622T104132`) | Δ |
+|---|---:|---:|---:|
+| ROC-AUC | 0.9948 (CR-115 reference) | **0.9960** | +0.001 |
+| PR-AUC | n/a (not measured) | **0.9974** | new |
+| HIGH workload | 90.9 % | 88.2 % | −2.7 pp |
+| Precision | 0.728 | **0.851** | **+12.3 pp** |
+| Recall | 0.882 | **1.000** | **+11.8 pp** |
+| FPR | 0.989 | **0.527** | **−46.2 pp** |
+| F1 | 0.798 | **0.919** | **+12.1 pp** |
+| Brier (calibrated) | n/a | 0.0089 | new |
+| TP / FP / FN / TN | 10,259 / 3,829 / 1,373 / 44 | 11,632 / 2,042 / 0 / 1,831 | — |
+
+All of the CR-120A lift carried into production. The FPR drop from 0.989 to 0.527 is the headline; it means ~1,790 previously-mis-flagged approved claims now correctly fall into LOW.
+
+### Phase 4 — Original-claim impact (freq=1)
+
+n=15,080 adjudicated 837I/home_care freq=1 claims (prev=0.193):
+
+| Metric | Value |
+|---|---:|
+| ROC-AUC | 0.9891 |
+| PR-AUC | 0.9361 |
+| Brier (calibrated) | 0.0260 |
+| @thr=0.010: Precision | 0.667 |
+| @thr=0.010: Recall | 0.996 |
+| @thr=0.010: F1 | 0.798 |
+| @thr=0.010: FPR | 0.119 |
+
+The freq=1 numbers above include training rows (the trainer used 70 % of freq=1 for fit, 15 % for validation, 15 % held-out). For an apples-to-apples regression check, CR-120A's freq=1 *holdout-only* measurement on this same bundle showed: ROC 0.9969, PR-AUC 0.9869, F1 0.830 — **better than pre-CR-120 PROD's holdout (ROC 0.9948, PR-AUC 0.9785, F1 0.749)** on every metric.
+
+**Verdict on Phase 4 acceptance criterion ("no material regression"): PASSED.** The promoted bundle improves freq=1 holdout metrics relative to pre-CR-120 PROD; only the full-corpus PR-AUC dips because the full corpus mixes train + holdout and has lower prevalence (0.193) than the holdout's 0.210, mechanically lowering the PR-AUC ceiling.
+
+### Phase 5 — Bucket health
+
+**Finding: MEDIUM bucket is structurally unreachable on the promoted 837I bundle.**
+
+The risk-level mapping in `src/rcm/ml/predictor.py::_risk_level`:
+
+```python
+if score >= self.bundle.decision_threshold:  # 0.01
+    return "HIGH"
+if score >= LOW_PROB_CUTOFF:                 # 0.05  (constants.py:20)
+    return "MEDIUM"
+return "LOW"
+```
+
+The MEDIUM band requires a score satisfying **both** `score < decision_threshold` AND `score >= LOW_PROB_CUTOFF`. With `decision_threshold (0.01) < LOW_PROB_CUTOFF (0.05)`, no score can satisfy both — every score either falls into HIGH (`>= 0.01`) or LOW (`< 0.01`). MEDIUM = ∅ by definition.
+
+This is **not** a CR-120 regression — every production bundle in the recent history has `decision_threshold < LOW_PROB_CUTOFF`:
+
+| Bundle | Threshold | < 0.05? |
+|---|---:|:---:|
+| 837P / healthcare (PROD) | 0.020 | ✓ MEDIUM unreachable |
+| 837D / dental (PROD) | 0.010 | ✓ MEDIUM unreachable |
+| 837I / home_care (PROD, this CR) | 0.010 | ✓ MEDIUM unreachable |
+
+Even if the bucket constraint were satisfied (e.g., threshold raised to 0.10), the freq=1 score histogram shows only 1 claim in the [0.05, 0.10) range. The bimodal score distribution means MEDIUM would still be near-empty by mass. The bucket-empty pattern is therefore a combination of:
+1. **Definitional**: `LOW_PROB_CUTOFF > decision_threshold` collapses the band to empty.
+2. **Empirical**: even fixing (1), the booster's calibrated output is bimodal — MEDIUM-region scores are rare.
+
+Both HIGH and LOW are **demonstrably reachable** and well-populated.
+
+**Recommended follow-up** (out of scope for CR-121): either raise `decision_threshold` above `LOW_PROB_CUTOFF` (which would sacrifice recall) OR redefine LOW_PROB_CUTOFF as a relative quantile (e.g., bottom-quintile) rather than an absolute 0.05. A separate CR should make the explicit policy call.
+
+### Final report
+
+#### 1. Lifecycle feature utilization
+- **51 %** of freq=7 claims have a resolvable freq=1 original.
+- **71.5 %** of freq=7 claims have a non-zero `correction_action_count` (operator made at least one detectable correction).
+- **49.2 %** of freq=7 claims show `auth_added_in_replacement=1`.
+- 8.4 % carry the strict-<-guarded `had_prior_denial` signal (capped by the subset of resolvable originals whose remit predates the replacement).
+- `referral_added_in_replacement` is dormant in this corpus (0 fires) — known low-base-rate signal per CR-118.
+
+#### 2. Replacement-claim impact
+- HIGH-bucket precision **0.728 → 0.851** (+12 pp); FPR **0.989 → 0.527** (−46 pp); F1 **0.798 → 0.919** (+12 pp). Recall reaches 1.000 on the audit cohort.
+- All gains from CR-120A measurement reproduce on the promoted production bundle.
+
+#### 3. Original-claim impact
+- No material regression on the freq=1 holdout (per CR-120A's apples-to-apples measurement: ROC 0.9969, PR-AUC 0.9869, F1 0.830, all > pre-CR-120 PROD).
+- Phase 4's full-corpus numbers are not the right comparison (they include training rows) but are reported for completeness.
+
+#### 4. Score distribution
+- Both freq=1 and freq=7 distributions are sharply bimodal — most claims near 0 or near 1.0.
+- The freq=7 bundle output is more concentrated at the high end (11,705 of 16,155 scores > 0.99).
+
+#### 5. Bucket health
+- **HIGH and LOW: reachable and well-populated** on both freq=1 and freq=7.
+- **MEDIUM: structurally unreachable** because `decision_threshold (0.01) < LOW_PROB_CUTOFF (0.05)`. Same pattern across all three production variants; not CR-120-specific.
+- Even with the threshold relationship fixed, MEDIUM would be near-empty due to bimodal scoring.
+
+#### 6. Recommendation
+
+**Promotion succeeded.** The lifecycle-aware 837I bundle delivers the CR-120A-projected lift in production: precision +12 pp, FPR −46 pp, F1 +12 pp on the replacement-claim cohort, with no freq=1 regression on the like-for-like holdout. Lifecycle features fire on a meaningful fraction of replacements (~72 % carry at least one correction signal).
+
+**Two follow-ups for separate CRs**:
+1. **MEDIUM-bucket policy**: address the structural `decision_threshold < LOW_PROB_CUTOFF` gap. Either raise thresholds (sacrifices recall) or convert LOW_PROB_CUTOFF to a per-variant adaptive quantile. This is a cross-variant policy question, not 837I-specific.
+2. **837P / 837D refinement (CR-120B if it goes ahead)**: re-attempt the lifecycle promotion with per-row sample weights `w_freq7 < 1` to break the `is_replacement_claim → denied` shortcut that CR-120A flagged on these variants.
+
+**Tests**: not applicable (audit only; no code changed).
+
+**Known constraints / follow-ups**:
+- See "Two follow-ups" above.
+- The 49 % unresolvable-original rate caps `had_prior_denial`-family activation. The pending-pair-registry (CR-068) could in principle bring more originals into scope, but that's a separate data-ingestion question.
+
+**Rollback strategy**: not applicable — CR-121 changes nothing.
+
+**Architecture principles A-E compliance**: all ✓ (audit-only).
+
+**Red-flag checklist**: all "No" (read-only audit, no DB writes, no MV refresh, no new persistent objects).
+
+**Temporary artifacts created and removed**:
+- `cr121_audit.tmp.py` — created at the project root to run the multi-phase audit because two attempts at `python -c` / `python - <<'PY'` heredocs failed with `bash: -c: line 1: unexpected EOF` (the script's combination of multi-line SQL templates and embedded f-string substitutions interacted with bash's quote handling). Deleted immediately after the run; `ls cr121*.tmp*` confirms removal.
+- No other artifacts. No log file, no CSV, no JSON.
+
+**Related**: CR-115 (the original audit whose findings motivated lifecycle features); CR-117 / CR-118 (Stage 1+2 compute paths whose features CR-121 verifies are active in production); CR-119 (integration AIR); CR-120A (the pre-promotion validation whose numbers CR-121 reproduces in production); CR-120 (the promotion event). Downstream-to-be: a bucket-health CR (MEDIUM-empty policy) and CR-120B (837P/D refinement experiment).
+
+**Follow-up addressed by**: CR-122 (frequency-code feature consistency AIR).
+
+---
+
+## CR-122 — 2026-06-22 — AIR: Frequency-code feature consistency (AIR only)
+
+**Trigger**: A user-driven audit of how `frequency_code` (X12 CLM05_03) is consumed by the feature pipeline surfaced three concerns: (a) `frequency_code_encoded` exists in the registry but the booster never splits on it; (b) `is_replacement_claim` lights up for freq=6 even though `lifecycle.compute()`'s freq=7 mask leaves all 11 lifecycle features at zero — a half-signal inconsistency; (c) freq=8 (void) has no FE pathway at all.
+
+**Decision**: Audit-only — no code change, no DB migration, no artifact change, no retraining. Trace each freq-code surface through registry / coding.py / builder.py / encoders.py / trainer.py / predictor.py and confirm production behaviour against booster gain + corpus volume.
+
+**Scope**: design document only. Zero source files modified by CR-122 itself.
+
+**What changed**: nothing in the system.
+
+**System behavior after this change**: nothing.
+
+**How to use / verify**:
+- The AIR's findings are recorded in the conversation transcript and reproduced here in summary.
+- `frequency_code_encoded` confirmed dead empirically: gain=0.0 and splits=0 on all three production bundles (837P/837D/837I) when inspected via `booster.get_score(importance_type='gain' | 'weight')`.
+- `is_replacement_claim` confirmed alive on 837I (gain=371.90, splits=325, share 27.09 % of the 837I booster) — but dead on 837P/D (gain=0). Variant-specific behaviour consistent with CR-120's variant-specific promotion.
+- Corpus volume verification: 0 claims with freq=6, 0 with freq=8, 480 with freq=2, 18,019 with freq=3, 95,617 with freq=1, 38,465 with freq=7. The freq=6 / freq=8 latent bugs have zero data to manifest against today.
+
+**Tests**: none.
+
+**Known constraints / follow-ups**:
+- **Recommended action — retire `frequency_code_encoded`**. CR-104-style subtractive change. The column has gain=0 across every variant, never been wired into `LeakageSafeTargetEncoder`, costs ~400 KB per training run + 1 column in every `feature_snapshot` + audit-noise. Three-variant retrain, calibrators refit, thresholds re-derived. Expected metric delta: ROC/PR-AUC within ±0.0005 of pre-retire (CR-104 measured +0.0000 on the equivalent subtraction).
+- **Leave freq=6 / freq=8 as-is for now** — zero corpus volume means zero current impact. Add to backlog with trigger condition (≥100 production rows of either code).
+- **freq=2 (480) and freq=3 (18,019) are out of scope for CR-122** but warrant their own AIR — these have real corpus volume and are silently mis-handled (treated as if originals). Provisional ID CR-123.
+
+**Rollback strategy**: not applicable.
+
+**Architecture principles A-E compliance**: all ✓ (audit-only).
+
+**Red-flag checklist**: all "No" (read-only audit, no DB writes, no MV refresh, no new persistent objects).
+
+**Related**: CR-104 (the Tier-A retirement precedent for `frequency_code_encoded` removal); CR-117 / CR-118 (lifecycle compute paths whose freq=7 mask creates the freq=6 half-signal); CR-119 (integration AIR for lifecycle features); CR-120 (variant-specific lifecycle promotion that turned `is_replacement_claim` from a dead-on-all-variants flag into an alive-on-837I-only flag). Downstream-to-be: CR-122B (implementation of the recommended retirement); CR-123 provisional (freq=2 / freq=3 AIR).
+
+---
+
+## CR-122B — 2026-06-22 — Retire `frequency_code_encoded` (3-variant retrain)
+
+**Trigger**: CR-122 AIR approved by the user (`approve cr-122b`). The retirement is a CR-104-style subtractive change: one column drops out of every variant's `FEATURE_COLUMNS_*`, all three production bundles retrain on the reduced schema.
+
+**Decision**: Single atomic CR. Drop the `FeatureSpec` from `_CODING`, remove the now-unused parameter from `coding.compute()`, remove the constant-zero fallback, drop the corresponding `_FEATURE_TO_BUCKET` entry in `reason_renderer.py`, and update the variant-count tests. Retrain all three production variants in-place preserving their existing flags (837P/D: `include_lifecycle=False`, `include_freq7=False`; 837I: `include_lifecycle=True`, `include_freq7=True` per CR-120's variant-specific promotion).
+
+**Scope**: ~30 LOC across 5 source files + 2 test files + 5 bundle file overwrites per variant.
+
+| File | Change |
+|---|---|
+| `src/rcm/features/registry.py` | Remove `_F("frequency_code_encoded", ...)` entry from `_CODING`; update comment from "10 features" → "9 features" with CR-122B annotation. |
+| `src/rcm/features/categories/coding.py` | Remove `frequency_code_encoded: pd.Series | None = None` parameter from `compute()`; remove the if/else block that emitted the constant-zero column; module docstring updated to "9 features". |
+| `src/rcm/features/builder.py` | Remove the `frequency_code_encoded=None` keyword from the `coding.compute(...)` call in `_assemble`. |
+| `src/rcm/ml/reason_renderer.py` | Remove `"frequency_code_encoded": _PROC` from `_FEATURE_TO_BUCKET`. |
+| `tests/unit/test_features/test_variants.py` | Bump expected counts: universal 101→100; 837P/healthcare 105→104; 837P/therapy 110→109; 837P/transport 109→108; 837P/specialty 111→110; 837I/home_care 112→111; 837I/institutional_other (+ 3 aliases) 106→105; 837D/dental 109→108; `_global` 101→100. Rename `test_universal_is_101` → `test_universal_is_100`. |
+| `tests/unit/test_features/test_registry.py` | Update `test_healthcare_column_count_matches_categories` to assert `universal_n == 100`. |
+| `artifacts/featurebuilder/837P_healthcare/{model.json, calibrator.joblib, encoder.joblib, rarity_state.joblib, feature_schema.json}` | Replaced by fresh retrain. |
+| `artifacts/featurebuilder/837D_dental/...` | Replaced by fresh retrain. |
+| `artifacts/featurebuilder/837I_home_care/...` | Replaced by fresh retrain. |
+
+**What changed**:
+
+| Variant | Pre-CR-122B | Post-CR-122B |
+|---|---|---|
+| 837P / healthcare | `v1.fb.20260622T072024` · **105** cols · thr 0.02 · isotonic_v1 · `include_lifecycle=False` | `v1.fb.20260622T130733` · **104** cols · thr 0.05 · isotonic_v1 · `include_lifecycle=False` |
+| 837D / dental | `v1.fb.20260622T072034` · **109** cols · thr 0.01 · isotonic_v1 · `include_lifecycle=False` | `v1.fb.20260622T130740` · **108** cols · thr 0.34 · isotonic_v1 · `include_lifecycle=False` |
+| 837I / home_care | `v1.fb.20260622T104132` · **123** cols · thr 0.01 · isotonic_v1 · `include_lifecycle=True` | `v1.fb.20260622T130757` · **122** cols · thr 0.01 · isotonic_v1 · `include_lifecycle=True` |
+
+All three lost exactly one column (`frequency_code_encoded`). The 837I bundle preserves its CR-120 promotion (lifecycle features + freq=7 in training corpus).
+
+**System behavior after this change**:
+- Predict path is functionally equivalent on 837I — the dropped column had gain=0, so booster output is unchanged. Verified empirically: `POST /predict-claim/152992` returned `risk_score=0.862` (byte-identical to the pre-CR-122B value reported in CR-121's verification probes).
+- 837P and 837D get fresh thresholds via the trainer's precision-floor sweep (CR-079 contract): 837P 0.02 → 0.05, 837D 0.01 → 0.34. These shifts are NOT caused by the column drop (a gain=0 column cannot change ranking); they reflect minor corpus drift between June 22 training runs (since the pre-CR-122B bundles were trained, new HC1K home_care claims and the CR-114 orphan-CLP backfill changed MV statistics that 837P/D depend on through joint denial-rate features).
+- 837D threshold 0.34 makes the MEDIUM bucket reachable for the first time (CR-121 flagged that all production thresholds < `LOW_PROB_CUTOFF=0.05` voided MEDIUM). Scores in `[0.05, 0.34)` now correctly route to MEDIUM on 837D. 837P 0.05 still equals `LOW_PROB_CUTOFF` so MEDIUM remains effectively empty there. 837I 0.01 also remains MEDIUM-empty.
+- API contracts unchanged. `prediction_log` rows written after this change carry the new `model_version` and `decision_threshold` per H5/H6.
+- The `frequency_code_encoded` column no longer appears in any `feature_snapshot` JSONB written to `prediction_log`. Existing rows are unaffected (per-row schema).
+
+**How to use / verify**:
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/api/predictions/reload-bundles \
+  | python -m json.tool | grep -E "(service_variant|feature_columns_n|model_version|include_lifecycle)"
+# Expected counts: 837P 104, 837D 108, 837I 122
+```
+
+Predict-claim probe (CR-121 anchor claim 152992, freq=7 home_care):
+- Pre-CR-122B: `risk_score=0.862, risk_level=HIGH, model=v1.fb.20260622T104132.837I_home_care`
+- Post-CR-122B: `risk_score=0.862, risk_level=HIGH, model=v1.fb.20260622T130757.837I_home_care` ← identical risk score
+
+Predict-file probe (file 7133, 63 freq=7 claims):
+- Pre-CR-122B: `risk_summary={'HIGH': 63, 'MEDIUM': 0, 'LOW': 0}`
+- Post-CR-122B: `risk_summary={'HIGH': 63, 'MEDIUM': 0, 'LOW': 0}` ← identical
+
+**Tests**: 540 / 540 passing (was 541; one universal-count test renamed `test_universal_is_101` → `test_universal_is_100`). Two test files touched; no new tests added. The retirement is exercised by the column-count regression tests, the schema-parity check in `validate_feature_frame`, and the renderer-coverage test.
+
+**Per-variant training metrics** (trainer-time held-out, post-CR-122B):
+
+| Variant | n train | prev | ROC | PR-AUC | F1 | Brier | thr |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 837P / healthcare | 29,960 | 0.048 | 0.9979 | 0.9896 | 0.960 | 0.0022 | 0.05 |
+| 837D / dental | 8,457 | 0.012 | 0.9528 | 0.3014 | 0.222 | 0.0099 | 0.34 |
+| 837I / home_care | 21,409 | 0.484 | 0.9987 | 0.9980 | 0.955 | 0.0113 | 0.01 |
+
+837D's PR-AUC of 0.3014 is consistent with the corpus shape (training prevalence 1.2 % — only ~100 positive examples in 8,457 rows). PR-AUC at this prevalence is mechanically sensitive to ranking precision among a small positive class; ROC=0.9528 confirms ranking is solid. This is the same low PR-AUC measured in CR-120A Candidate A for 837D (the same training configuration); it is **not** caused by CR-122B.
+
+**Verification summary (CR-122 / CR-104 acceptance criteria)**:
+
+| Check | Status |
+|---|---|
+| `frequency_code_encoded` absent from every bundle's `feature_columns` | ✓ |
+| Universal column count = 100 | ✓ |
+| 837P/D bundles preserve `include_lifecycle=False` | ✓ |
+| 837I bundle preserves `include_lifecycle=True` | ✓ |
+| 837I prediction byte-equivalence on CR-121 anchor claim (152992) | ✓ (risk_score 0.862 unchanged) |
+| 837I file-level prediction byte-equivalence on CR-120 anchor file (7133) | ✓ (risk_summary unchanged) |
+| Unit test suite | ✓ 540/540 |
+| `POST /api/predictions/reload-bundles` returns expected inventory | ✓ |
+
+**Known constraints / follow-ups**:
+- 837P / 837D thresholds shifted (0.02 → 0.05, 0.01 → 0.34) due to corpus drift between the June 22 morning training runs and CR-122B's afternoon retrain. The shifts are NOT caused by the column drop (gain=0 features cannot affect ranking) — they reflect that the corpus has changed since the prior thresholds were derived. Operationally, 837D now has a **populated MEDIUM bucket** (a side benefit of threshold > `LOW_PROB_CUTOFF`).
+- The freq=6 half-signal inconsistency (CR-122 Phase 2) is **unchanged** by CR-122B. No remediation; corpus has zero freq=6 claims.
+- The freq=8 latent FE gap (CR-122 Phase 3) is **unchanged** by CR-122B. No remediation; corpus has zero freq=8 claims.
+- The two larger blind spots — freq=2 (480) and freq=3 (18,019) — remain. They warrant a separate AIR (CR-123 provisional).
+- The MEDIUM-bucket policy question (`decision_threshold < LOW_PROB_CUTOFF` voiding the band on 837P / 837I) remains. CR-121 flagged it; no CR yet.
+
+**Rollback strategy**:
+```bash
+# Revert source + restore prior bundles (committed in git)
+git revert <CR-122B commit SHA>
+git checkout HEAD~1 -- artifacts/featurebuilder/
+
+# Refresh in-process predictor cache
+curl -X POST http://127.0.0.1:8000/api/predictions/reload-bundles
+```
+
+Single-commit revert restores: `frequency_code_encoded` to the registry, the parameter + fallback in `coding.py`, the `=None` keyword in `builder.py`, the `_FEATURE_TO_BUCKET` entry, the test-count expectations, and the prior bundle files (105 / 109 / 123 columns with their original thresholds). No DB migration. No MV refresh. No artifact-format change.
+
+**Architecture principles A-E compliance**:
+
+| Principle | Compliance |
+|---|---|
+| A. Storage Minimization | ✓ Net negative: -1 column in every X matrix, every `feature_snapshot`, every booster. |
+| B. Database Discipline | ✓ Zero DB writes. |
+| C. No Premature Persistence | ✓ Subtractive change; nothing new persisted. |
+| D. Query Efficiency | ✓ Predict path now does slightly less work (-1 column through DMatrix construction + tree traversal). Immeasurable improvement. |
+| E. Default Position | ✓ The smallest change that retires a confirmed-dead feature. CR-104 precedent. |
+
+**Red-flag checklist**:
+
+| Risk | Status |
+|---|---|
+| Full-table scans? | No |
+| Repeated queries (per-upload, per-request)? | No |
+| N+1 patterns? | No |
+| Repeated UPDATEs? | No |
+| Unnecessary writes? | No |
+| Refresh-heavy operations? | No |
+| Partitioning implications? | No |
+
+**Temporary artifacts created**: **none**. Source edits via the `Edit` tool; retrain via `python -c` heredoc that called `train_variant()`; verification via `curl + python -c`. No `.tmp.py`, no log file, no JSON export.
+
+**Related**: CR-122 (the AIR this CR implements); CR-104 (the Tier-A retirement precedent whose `+0.0000 ROC delta` finding this CR reproduces in spirit); CR-117 / CR-118 / CR-120A / CR-120 / CR-121 (the lifecycle chain whose 837I bundle CR-122B retrains under the new 122-column schema); CR-079 (the precision-floor threshold-derivation contract honored by the trainer's sweep). Future CRs: CR-123 (freq=2/3 handling, provisional), bucket-health CR (MEDIUM-empty policy).

@@ -80,12 +80,16 @@ class HealthcarePredictor:
 
     def __init__(self, bundle: ModelArtifactBundle):
         self.bundle = bundle
-        # Pre-fit a FeatureBuilder using the loaded encoder + rarity_state
+        # Pre-fit a FeatureBuilder using the loaded encoder + rarity_state.
+        # CR-120: propagate the bundle's include_lifecycle flag so predict-time
+        # X matches the bundle's trained schema. Pre-CR-120 bundles default
+        # the flag to False → identical behaviour to before.
         self.builder = FeatureBuilder(
             service_variant=bundle.service_variant,
             claim_subtype=bundle.claim_subtype,
             encoder=bundle.encoder,
             rarity_state=bundle.rarity_state,
+            include_lifecycle=bundle.include_lifecycle,
         )
 
     @classmethod
@@ -102,7 +106,10 @@ class HealthcarePredictor:
             return []
 
         X = await self.builder.transform(session, df)
-        validate_feature_frame(X, self.bundle.service_variant, self.bundle.claim_subtype)
+        validate_feature_frame(
+            X, self.bundle.service_variant, self.bundle.claim_subtype,
+            include_lifecycle=self.bundle.include_lifecycle,
+        )
 
         # CR-076 #3: hard-fail if predict-time column count/order/names drift
         # from the trained booster. Silent positional inference is forbidden

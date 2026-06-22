@@ -165,7 +165,7 @@ _CLINICAL = (
 )
 
 
-# Category D — coding integrity (10 features)
+# Category D — coding integrity (9 features; CR-122B retired frequency_code_encoded)
 _CODING = (
     _F("has_modifier",                  _CAT.CODING, _SRC.CLAIM, "bool", "any modifier1-4 present on any line"),
     _F("modifier_count_total",          _CAT.CODING, _SRC.CLAIM, "int", "count non-null modifiers across lines"),
@@ -177,8 +177,6 @@ _CODING = (
         availability=_AVL.REQUIRES_REF_DATA, requires_ref_table="ncci_edits"),
     _F("cpt_pos_alignment_score",       _CAT.CODING, _SRC.REFERENCE_DATA, "bool", "POS in procedure_codes.metadata.valid_pos_codes; default 1",
         availability=_AVL.REQUIRES_REF_DATA, default_value=1, requires_ref_table="procedure_codes"),
-    _F("frequency_code_encoded",        _CAT.CODING, _SRC.PAYER, "float", "target-encoded frequency_code (1/6/7/8)",
-        leakage_risk=_RISK.MEDIUM),
     _F("is_replacement_claim",          _CAT.CODING, _SRC.CLAIM, "bool", "frequency_code in (6,7)"),
     _F("cpt_frequency_for_patient_ytd", _CAT.CODING, _SRC.MATERIALIZED_VIEW, "int", "count of same CPT for patient YTD (strict-<)",
         availability=_AVL.REQUIRES_HISTORY),
@@ -418,6 +416,36 @@ _SPECIALTY_VARIANT = (
 # Assemble FEATURE_REGISTRY (name → spec)
 # ---------------------------------------------------------------------------
 
+# Category lifecycle — CR-117/CR-118 lifecycle-aware replacement features.
+# OPT-IN via `include_lifecycle=True`; default-off keeps pre-CR-120 bundles
+# (and their N-column matrices) working. M1 invariant preserved.
+_LIFECYCLE = (
+    _F("had_prior_denial",               _CAT.PATIENT_HISTORY, _SRC.CLAIM, "bool",
+       "Original (freq=1) was denied (CLP02='4') strictly before this row"),
+    _F("prior_denial_bucket",            _CAT.PATIENT_HISTORY, _SRC.DERIVED, "int",
+       "Canonical denial bucket of original's top CARC (0–10); zero when no prior denial"),
+    _F("days_since_original_denial",     _CAT.PATIENT_HISTORY, _SRC.DERIVED, "int",
+       "Days between original remit and replacement service date; clipped [0,365]"),
+    _F("auth_added_in_replacement",      _CAT.PATIENT_HISTORY, _SRC.DERIVED, "bool",
+       "Original auth NULL/blank and replacement auth present (freq=7 only)"),
+    _F("referral_added_in_replacement",  _CAT.PATIENT_HISTORY, _SRC.DERIVED, "bool",
+       "Original referral NULL/blank and replacement referral present"),
+    _F("modifier_added_in_replacement",  _CAT.PATIENT_HISTORY, _SRC.DERIVED, "bool",
+       "set(replacement.modifiers) - set(original.modifiers) non-empty"),
+    _F("diagnosis_changed_in_replacement",_CAT.PATIENT_HISTORY, _SRC.DERIVED, "bool",
+       "set(replacement.diagnoses) != set(original.diagnoses)"),
+    _F("procedure_changed_in_replacement",_CAT.PATIENT_HISTORY, _SRC.DERIVED, "bool",
+       "set(replacement.procedure_codes) != set(original.procedure_codes)"),
+    _F("lines_changed_in_replacement",   _CAT.PATIENT_HISTORY, _SRC.DERIVED, "int",
+       "Signed delta in claim_lines_count, clipped [-99,99]"),
+    _F("charge_changed_in_replacement",  _CAT.PATIENT_HISTORY, _SRC.DERIVED, "int",
+       "Sign of total_charge_amount delta ∈ {-1,0,+1}"),
+    _F("correction_action_count",        _CAT.PATIENT_HISTORY, _SRC.DERIVED, "int",
+       "Count of binary correction flags (0–7)"),
+)
+LIFECYCLE_FEATURE_COLUMNS: tuple[str, ...] = tuple(s.name for s in _LIFECYCLE)
+
+
 _ALL_SPECS: tuple[FeatureSpec, ...] = (
     *_BASE,
     *_COVERAGE,
@@ -439,6 +467,7 @@ _ALL_SPECS: tuple[FeatureSpec, ...] = (
     *_INSTITUTIONAL_OTHER_VARIANT,
     *_DENTAL_VARIANT,
     *_SPECIALTY_VARIANT,
+    *_LIFECYCLE,
 )
 
 # Multiple variant blocks can share the same feature names (e.g. cob_indicator
@@ -506,6 +535,7 @@ def get_feature_columns(
     claim_subtype: str,
     *,
     fall_back_to_global: bool = False,
+    include_lifecycle: bool = False,
 ) -> tuple[str, ...]:
     """Return the canonical ordered feature column list for (variant, subtype).
 
@@ -513,17 +543,25 @@ def get_feature_columns(
     to FEATURE_COLUMNS_GLOBAL (universal-only). Otherwise raises KeyError.
     The builder always passes `fall_back_to_global=True` so the system can
     score ANY claim, even a variant that isn't yet specialized.
+
+    CR-120: `include_lifecycle=True` appends the 11 LIFECYCLE_FEATURE_COLUMNS
+    AFTER all base + variant columns. Default-off keeps existing bundles
+    working with their pre-CR-120 column count.
     """
     key = (service_variant, claim_subtype)
     if key in _VARIANT_COLUMNS:
-        return _VARIANT_COLUMNS[key]
-    if fall_back_to_global:
-        return FEATURE_COLUMNS_GLOBAL
-    raise KeyError(
-        f"No FEATURE_COLUMNS registered for ({service_variant!r}, {claim_subtype!r}). "
-        f"Known: {sorted(_VARIANT_COLUMNS)}. "
-        f"Pass fall_back_to_global=True to use the universal-only column list."
-    )
+        cols = _VARIANT_COLUMNS[key]
+    elif fall_back_to_global:
+        cols = FEATURE_COLUMNS_GLOBAL
+    else:
+        raise KeyError(
+            f"No FEATURE_COLUMNS registered for ({service_variant!r}, {claim_subtype!r}). "
+            f"Known: {sorted(_VARIANT_COLUMNS)}. "
+            f"Pass fall_back_to_global=True to use the universal-only column list."
+        )
+    if include_lifecycle:
+        return cols + LIFECYCLE_FEATURE_COLUMNS
+    return cols
 
 
 def is_registered_variant(service_variant: str, claim_subtype: str) -> bool:
@@ -557,6 +595,7 @@ def validate_feature_frame(
     *,
     allow_extra: bool = False,
     fall_back_to_global: bool = False,
+    include_lifecycle: bool = False,
 ) -> None:
     """Strict check that ``list(df.columns) == FEATURE_COLUMNS_<variant>``.
 
@@ -565,9 +604,14 @@ def validate_feature_frame(
 
     When `fall_back_to_global=True`, unknown variants are validated against
     FEATURE_COLUMNS_GLOBAL (the universal-only column list).
+
+    CR-120: `include_lifecycle=True` expects the 11 lifecycle columns
+    appended after the base columns.
     """
     expected = list(get_feature_columns(
-        service_variant, claim_subtype, fall_back_to_global=fall_back_to_global,
+        service_variant, claim_subtype,
+        fall_back_to_global=fall_back_to_global,
+        include_lifecycle=include_lifecycle,
     ))
     actual = list(df.columns)
 

@@ -90,6 +90,8 @@ async def train_variant(
     n_estimators: int = 200,
     max_depth: int = 5,
     learning_rate: float = 0.05,
+    include_lifecycle: bool = False,
+    include_freq7: bool = False,
 ) -> ModelArtifactBundle:
     """Train a per-variant denial-prediction model end-to-end (CR-064).
 
@@ -112,6 +114,7 @@ async def train_variant(
         service_variant=service_variant,
         claim_subtype=claim_subtype,
         limit=limit,
+        include_freq7=include_freq7,
     )
     if df.empty:
         raise ValueError(
@@ -166,7 +169,11 @@ async def train_variant(
     safe_rates_held  = safe_rates_all.loc[df_held.index]
 
     # Fit FB on TRAIN only — encoder vocab + rarity_state come from train rows
-    builder = FeatureBuilder(service_variant=service_variant, claim_subtype=claim_subtype)
+    builder = FeatureBuilder(
+        service_variant=service_variant,
+        claim_subtype=claim_subtype,
+        include_lifecycle=include_lifecycle,
+    )
     artifacts = await builder.fit_transform(
         session, df_train, pd.Series(y_train, index=df_train.index),
         safe_rates=safe_rates_train,
@@ -312,6 +319,7 @@ async def train_variant(
         metrics=metrics,
         training_size=int(len(y_train)),
         training_prevalence=float(y_train.mean()),
+        include_lifecycle=include_lifecycle,
     )
     bundle.save(Path(artifact_dir))
     return bundle
