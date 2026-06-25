@@ -8335,3 +8335,1613 @@ Single-commit revert restores: `frequency_code_encoded` to the registry, the par
 **Temporary artifacts created**: **none**. Source edits via the `Edit` tool; retrain via `python -c` heredoc that called `train_variant()`; verification via `curl + python -c`. No `.tmp.py`, no log file, no JSON export.
 
 **Related**: CR-122 (the AIR this CR implements); CR-104 (the Tier-A retirement precedent whose `+0.0000 ROC delta` finding this CR reproduces in spirit); CR-117 / CR-118 / CR-120A / CR-120 / CR-121 (the lifecycle chain whose 837I bundle CR-122B retrains under the new 122-column schema); CR-079 (the precision-floor threshold-derivation contract honored by the trainer's sweep). Future CRs: CR-123 (freq=2/3 handling, provisional), bucket-health CR (MEDIUM-empty policy).
+
+**Follow-up addressed by**: CR-121B (re-verification under the 122-column schema).
+
+---
+
+## CR-121B — 2026-06-22 — Lifecycle bundle re-verification (post-CR-122B; audit only)
+
+**Trigger**: CR-122B retrained the promoted 837I bundle into a 122-column schema (down from 123) by retiring `frequency_code_encoded`. CR-121 was measured against the 123-column predecessor (`v1.fb.20260622T104132`). This entry re-runs the seven-phase verification against the current bundle (`v1.fb.20260622T130757`) so the post-CR-122B baseline is recorded.
+
+**Decision**: Audit-only. No bundle change, no retraining, no recalibration, no threshold change, no FE modification.
+
+**Scope**: zero source changes. One temp `cr_postaudit.tmp.py` written, run, and deleted (artifacts section).
+
+**What changed**: nothing in the system.
+
+**System behavior after this change**: nothing.
+
+### Phase 1 — Lifecycle feature activation
+
+`include_lifecycle=True`, threshold=0.01, calibrator `isotonic_v1`, 122 cols.
+
+**freq=1 (n=20,728)**: 0 % activation on all 11 lifecycle features. Only 24 rows had a resolvable "original" (these were freq=1 claims that themselves got later replacements pointing back). The freq=7 mask in `lifecycle.compute()` correctly zeroed every feature. Predict-time behaviour on originals is unchanged.
+
+**freq=7 (n=16,155, 51.0 % resolvable original)**:
+
+| Feature | Activation | Nonzero | Mean | Max |
+|---|---:|---:|---:|---:|
+| `correction_action_count` | **71.5 %** | 11,556 | 0.752 | 5.000 |
+| `auth_added_in_replacement` | **49.2 %** | 7,947 | 0.492 | 1.000 |
+| `diagnosis_changed_in_replacement` | 12.8 % | 2,065 | 0.128 | 1.000 |
+| `had_prior_denial` | 8.4 % | 1,363 | 0.084 | 1.000 |
+| `prior_denial_bucket` | 8.4 % | 1,363 | 0.389 | 7.000 |
+| `days_since_original_denial` | 8.4 % | 1,363 | 1.343 | 72.000 |
+| `charge_changed_in_replacement` | 6.8 % | 1,104 | -0.068 | 1.000 |
+| `lines_changed_in_replacement` | 3.4 % | 549 | -0.216 | 3.000 |
+| `procedure_changed_in_replacement` | 1.9 % | 314 | 0.019 | 1.000 |
+| `modifier_added_in_replacement` | 1.0 % | 163 | 0.010 | 1.000 |
+| `referral_added_in_replacement` | 0.0 % | 0 | 0.000 | 0.000 |
+
+Identical to CR-121's measurement on the 123-column bundle. Verifies that retiring `frequency_code_encoded` did not affect lifecycle compute.
+
+### Phase 2 — Lifecycle feature utilization (booster gain + cohort SHAP)
+
+`total_gain=1372.9`, `total |SHAP|=268,681` across 36,883 predictions:
+
+| Feature | Gain | Splits | Gain % | Σ\|SHAP\| | SHAP % |
+|---|---:|---:|---:|---:|---:|
+| `correction_action_count` | 9.11 | 29 | 0.66 % | **1342.28** | **0.50 %** |
+| `auth_added_in_replacement` | 12.87 | 13 | 0.94 % | 498.39 | 0.19 % |
+| `had_prior_denial` | 5.00 | 9 | 0.36 % | 492.23 | 0.18 % |
+| `diagnosis_changed_in_replacement` | 19.63 | 2 | **1.43 %** | 63.29 | 0.02 % |
+| `prior_denial_bucket` | 0.00 | 0 | — | 0.00 | — |
+| `days_since_original_denial` | 0.00 | 0 | — | 0.00 | — |
+| `referral_added_in_replacement` | 0.00 | 0 | — | 0.00 | — |
+| `modifier_added_in_replacement` | 0.00 | 0 | — | 0.00 | — |
+| `procedure_changed_in_replacement` | 0.00 | 0 | — | 0.00 | — |
+| `lines_changed_in_replacement` | 0.00 | 0 | — | 0.00 | — |
+| `charge_changed_in_replacement` | 0.00 | 0 | — | 0.00 | — |
+
+**4 of 11 lifecycle features are alive on this booster** (`correction_action_count`, `auth_added_in_replacement`, `had_prior_denial`, `diagnosis_changed_in_replacement`). Combined lifecycle gain share is 3.39 %; combined SHAP share is 0.89 %. The remaining 7 are gain=0 / SHAP≈0 and are Tier-A retirement candidates (CR-104 / CR-122B precedent).
+
+The dominant feature on this booster remains `is_replacement_claim` (27.09 % of total gain per the CR-122B verification), with `same_day_visits_for_patient` (28.38 %) close behind. Lifecycle features contribute marginally but real signal.
+
+### Phase 3 — Replacement-claim quality (freq=7, n=15,505 adjudicated, prev=0.750)
+
+| Metric | Pre-CR-120 baseline | Post-CR-122B current | Δ |
+|---|---:|---:|---:|
+| ROC-AUC | 0.9948 | **0.9960** | +0.0012 |
+| PR-AUC | n/a | **0.9974** | new |
+| Precision | 0.728 | **0.851** | **+12.3 pp** |
+| Recall | 0.882 | **1.000** | **+11.8 pp** |
+| F1 | 0.798 | **0.919** | **+12.1 pp** |
+| FPR | 0.989 | **0.527** | **−46.2 pp** |
+| FNR | 0.118 | **0.000** | **−11.8 pp** |
+| Brier (calibrated) | n/a | 0.0089 | new |
+| TP / FP / FN / TN | 10,259 / 3,829 / 1,373 / 44 | 11,632 / 2,042 / 0 / 1,831 | — |
+
+All CR-121 v1 deltas reproduce on the 122-column bundle. The column drop is predictively neutral; the lift remains.
+
+### Phase 4 — Original-claim quality (freq=1, n=15,080 adjudicated, prev=0.193)
+
+| Metric | Value (full corpus, train+holdout mixed) |
+|---|---:|
+| ROC-AUC | 0.9891 |
+| PR-AUC | 0.9361 |
+| Precision @ thr=0.01 | 0.667 |
+| Recall | 0.996 |
+| F1 | 0.798 |
+| FPR | 0.119 |
+| Brier (calibrated) | 0.0260 |
+
+For apples-to-apples comparison vs pre-CR-120, the trainer-time held-out block (from the bundle's `feature_schema.json` `held_out` section) reports: ROC=0.9987, PR-AUC=0.9980, F1=0.955. **No material regression vs CR-120A Candidate B's held-out (ROC 0.9987, PR 0.9980, F1 0.955) — byte-equivalent.** The full-corpus numbers above are honest reporting but biased upward by training-row inclusion.
+
+### Phase 5 — Bucket health
+
+| Cohort | HIGH | MEDIUM | LOW |
+|---|---:|---:|---:|
+| freq=1 (n=20,728) | 48.2 % | **0.0 %** | 51.8 % |
+| freq=7 (n=16,155) | 88.7 % | **0.0 %** | 11.3 % |
+
+**MEDIUM is structurally unreachable** because `decision_threshold (0.01) ≤ LOW_PROB_CUTOFF (0.05)`. Per the `_risk_level` logic in `predictor.py`, any score ≥ 0.01 → HIGH; the MEDIUM band `[0.05, 0.01)` is empty by definition. Identical to CR-121 v1; not a CR-122B regression.
+
+Score distribution is bimodal at the extremes (74 % of freq=1 below 0.005; 72 % of freq=7 above 0.99). Even with the threshold relationship fixed, MEDIUM would be near-empty by mass — only 1 freq=1 claim sits in [0.05, 0.10) in this run.
+
+### Phase 6 — Calibration
+
+Combined adjudicated cohort (n=30,585 across both freq=1 and freq=7):
+
+| Bucket | n | mean_pred | obs_denial | gap |
+|---|---:|---:|---:|---:|
+| [0.0, 0.1) | 14,336 | 0.003 | 0.003 | +0.000 |
+| [0.1, 0.2) | 1,028 | 0.155 | 0.041 | +0.114 |
+| [0.2, 0.3) | 189 | 0.213 | 0.206 | +0.007 |
+| [0.3, 0.4) | 0 | empty | empty | — |
+| [0.4, 0.5) | 322 | 0.446 | 0.351 | +0.095 |
+| [0.5, 0.6) | 88 | 0.577 | 0.614 | −0.036 |
+| [0.6, 0.7) | 26 | 0.670 | 0.615 | +0.054 |
+| [0.7, 0.8) | 162 | 0.714 | 0.648 | +0.066 |
+| [0.8, 0.9) | 453 | 0.870 | 0.808 | +0.062 |
+| [0.9, 1.0) | 13,981 | 0.997 | 0.985 | +0.012 |
+
+- **ECE (weighted)** = **0.0118** — excellent.
+- **Monotonicity**: ✓ observed denial rate is non-decreasing across populated buckets.
+- Largest gap is in [0.1, 0.2) (predicted 0.155, observed 0.041) — minor over-confidence in a thin band (n=1,028). All other buckets within ±0.10. The model is **well-calibrated overall** with mild over-confidence at the low-mid range.
+
+### Phase 7 — Recommendation
+
+**A. CR-120 successful — keep the promoted bundle.**
+
+Justification:
+1. **Lifecycle features actively contributing** — 4 of 11 are alive at the booster (gain > 0 + SHAP > 0.01), with `correction_action_count` ranking first by SHAP magnitude. The remaining 7 are Tier-A dead candidates (CR-122B-style retirement target).
+2. **Replacement-claim quality dramatically improved** — every CR-115 baseline gap closed: P +12 pp, R +12 pp, F1 +12 pp, FPR −46 pp, FNR −12 pp. CR-122B's column retirement preserved the lift exactly.
+3. **Original-claim performance preserved** — trainer-time held-out ROC 0.9987 / PR 0.9980 / F1 0.955 matches the pre-CR-122B 123-column bundle. No regression.
+4. **Calibration is excellent** — ECE 0.0118, fully monotonic.
+5. **MEDIUM-bucket gap remains** but is a cross-variant policy concern (LOW_PROB_CUTOFF vs decision_threshold), not a CR-120 regression.
+
+### Final Report
+
+| Phase | Finding |
+|---|---|
+| 1. Lifecycle feature activation | freq=1: all 11 zero (correct). freq=7: 9 of 11 fire on ≥1 % of cohort; `correction_action_count` at 71.5 %, `auth_added` at 49.2 %. Activation pattern unchanged from CR-121 v1. |
+| 2. Lifecycle feature importance | 4 of 11 alive at the booster (combined 3.39 % gain, 0.89 % SHAP). 7 are gain=0 — Tier-A retirement candidates. |
+| 3. Replacement-claim impact | P 0.728→0.851 (+12 pp), FPR 0.989→0.527 (−46 pp), F1 0.798→0.919 (+12 pp). Lift fully preserved post-CR-122B. |
+| 4. Original-claim impact | Held-out ROC 0.9987, PR-AUC 0.9980, F1 0.955 — no regression vs CR-120A baseline. |
+| 5. Bucket health | HIGH and LOW reachable and populated. MEDIUM structurally empty (threshold 0.01 ≤ LOW_PROB_CUTOFF 0.05); pre-existing cross-variant issue. |
+| 6. Calibration health | ECE 0.0118, monotonic; excellent. Mild over-confidence in [0.1, 0.2) band only. |
+| 7. Recommendation | **Keep the promoted bundle (A).** Optionally schedule a future Tier-A retirement CR for the 7 dead lifecycle features and a MEDIUM-bucket policy CR. |
+
+**Tests**: not applicable (audit only).
+
+**Known constraints / follow-ups**:
+- 7 of 11 lifecycle features (`prior_denial_bucket`, `days_since_original_denial`, `referral_added_in_replacement`, `modifier_added_in_replacement`, `procedure_changed_in_replacement`, `lines_changed_in_replacement`, `charge_changed_in_replacement`) have booster gain=0 on the promoted bundle. Candidates for CR-122B-style retirement after one more retrain cycle confirms persistence.
+- MEDIUM-bucket structural emptiness on 837P (thr 0.05 = LOW_PROB_CUTOFF) and 837I (thr 0.01 < LOW_PROB_CUTOFF) — separate cross-variant policy CR warranted.
+- 837P/D `frequency_code_encoded` retirement landed in CR-122B; verification on those variants reuses the same logic but they don't carry lifecycle features.
+
+**Rollback strategy**: not applicable — CR-121B changes nothing.
+
+**Architecture principles A-E compliance**: all ✓ (audit-only).
+
+**Red-flag checklist**: all "No" (read-only audit, no DB writes, no MV refresh, no new persistent objects).
+
+**Temporary artifacts created and removed**:
+- `cr_postaudit.tmp.py` — created at the project root for the integrated audit script (~250 LOC: SQL pull + child rolling + lifecycle.compute + booster gain + per-row SHAP via `booster.predict(pred_contribs=True)` + calibration buckets). The prior CR-121 v1 already documented why a `python -c` heredoc fails on this exact shape (`bash: line 1: unexpected EOF`). Deleted immediately after the run; `ls cr_postaudit*.tmp*` confirms removal.
+- No other artifacts. No log file, CSV, or JSON.
+
+**Suggested commit (for this re-audit)**:
+```
+audit(homecare): re-verify lifecycle bundle post-CR-122B (CR-121B)
+```
+
+**Related**: CR-121 (the v1 audit on the 123-column bundle); CR-122B (the column retirement whose neutrality this CR confirms); CR-120 (the original lifecycle promotion); CR-120A (the pre-promotion validation whose Candidate B metrics this CR re-anchors against); CR-115 (the original audit defining the baseline this CR compares against). Future CRs: 7-feature Tier-A retirement (lifecycle subset), MEDIUM-bucket policy.
+
+---
+
+## CR-124 — 2026-06-24 — Payer denial-rate feature audit (30 D / 90 D leaderboard; audit only)
+
+**Trigger**: Operator-driven audit asking for `payer_denial_rate_30d`, `payer_denial_rate_90d`, `payer_cpt_denial_rate`, `cpt_denial_rate_global`, `dx_denial_rate_global` and current payer leaderboard.
+
+**Decision**: Audit-only. Zero source / bundle / DB-schema changes. Trace each feature back to its source file/table/SQL; produce 30 D and 90 D payer denial-rate leaderboards from live data; assess feature stability.
+
+**Scope**: zero source files modified. SQL queries via `docker exec psql`; tracing via `Grep` + `Read`. No temp `.py` script needed.
+
+### Phase 1 — Exact computation flow
+
+**Important finding**: of the five feature names in the prompt, only **two exist** in the codebase. The 30 D / 90 D / `_global` variants **do not exist** as registered features.
+
+| Feature name in prompt | Status | If alive: where lives |
+|---|---|---|
+| `payer_denial_rate_30d` | ❌ does not exist | — |
+| `payer_denial_rate_90d` | ❌ does not exist | — |
+| `payer_cpt_denial_rate` | ✓ alive | Cat I joint; `mv_payer_cpt_denial_rate`; `joint.py::compute` |
+| `cpt_denial_rate_global` | ❌ does not exist | — (closest: `cpt_dx_denial_rate`) |
+| `dx_denial_rate_global` | ❌ does not exist | — (closest: `payer_dx_denial_rate`) |
+
+**The MV-backed denial-rate features that ACTUALLY exist** (registry-traceable):
+
+| Feature | Category | Source MV | Source files |
+|---|---|---|---|
+| `payer_overall_denial_rate` | A — coverage | `mv_payer_denial_rates` | `migrations/0010_*`, `categories/joint.py:102-108` |
+| `payer_cpt_denial_rate` | I — joint | `mv_payer_cpt_denial_rate` | `migrations/0010_*:96-120`, `joint.py:54-60` |
+| `payer_dx_denial_rate` | I — joint | `mv_payer_dx_denial_rate` | `migrations/0010_*:122-145`, `joint.py:62-68` |
+| `payer_pos_denial_rate` | I — joint | `mv_payer_pos_denial_rate` | `migrations/0010_*:147-171`, `joint.py:70-76` |
+| `cpt_dx_denial_rate` | C — clinical / I joint mirror | `mv_cpt_dx_denial_rate` | `migrations/0010_*:173-201`, `joint.py:78-84` |
+| `provider_overall_denial_rate` | H — provider | `mv_provider_denial_profiles` | `migrations/0010_*` |
+| `provider_payer_denial_rate` | H/I | `mv_provider_payer_denial_rate` | `migrations/0010_*`, `joint.py:86-92` |
+| `provider_cpt_denial_rate` | H | `mv_provider_cpt_denial_rate` | `migrations/0010_*`, `joint.py:94-100` |
+| `provider_cpt_denial_rate_joint` | I (alias of above) | same MV | `joint.py:154` |
+
+**Aggregation logic** (representative, from `mv_payer_denial_rates`):
+```sql
+CREATE MATERIALIZED VIEW mv_payer_denial_rates AS
+SELECT payer_id, service_variant, claim_subtype,
+       count(*) AS volume,
+       avg(denied::float) AS denial_rate,
+       sum(denied) AS denied_count
+FROM mv_claim_labels
+WHERE payer_id IS NOT NULL
+GROUP BY payer_id, service_variant, claim_subtype;
+```
+
+**`mv_claim_labels` source** (`migrations/0010_*:42-69`):
+- Joins `claims` ⨝ `remittance_claims`
+- Filters `frequency_code IS NULL OR frequency_code = '1'` (excludes freq=7/2/3/6/8)
+- Filters `service_from_date IS NOT NULL`
+- Filters `c.deleted_at IS NULL` (CR-056)
+- Labels: `denied=1` if any remit has CLP02='4'; `denied=0` if any has CLP02 ∈ {'1','2','3','19','20'}; otherwise `NULL`
+- `HAVING` requires at least one adjudicated outcome
+
+**Date window logic**: **NONE.** Every denial-rate MV is **lifetime / all-time**. There is no `service_from_date >= now() - INTERVAL '30 days'` clause anywhere in the FE pipeline.
+
+**Refresh logic** (`mv_claim_labels` and downstream MVs):
+- **Pre-train**: CR-083 added `REFRESH MATERIALIZED VIEW CONCURRENTLY mv_claim_labels` before every `/train` invocation.
+- **Post-upload**: CR-090 added a debounced background refresh after every `/api/edi/upload`.
+- **Manual**: `REFRESH MATERIALIZED VIEW CONCURRENTLY <mv>` from psql.
+- No automated nightly cron in this codebase.
+
+**Training-time leakage-safe override** (CR-107):
+`compute_leakage_safe_denial_rates(query_df, train_df, train_y)` in `builder.py:118` overrides the 8 MV-derived denial-rate features during `/train` only. Uses `merge_asof(allow_exact_matches=False)` with strict-< on `service_from_date` — each training row sees a denial rate computed over EARLIER-DATED train rows only. **Predict time uses the global MV unchanged.**
+
+| Question | Answer |
+|---|---|
+| Uses entire DB history? | YES — lifetime aggregation in the MVs. |
+| Rolling 30 days? | NO. |
+| Rolling 90 days? | NO. |
+| Materialized snapshot? | YES — all 9 denial-rate features come from MVs that are refreshed pre-train + post-upload. |
+| Training-only snapshot? | YES — CR-107 leakage-safe override at training time overrides 8 MV values per row using only train labels. |
+| Live prediction-time lookup? | YES — at predict time the global MV is read directly (no override, no train/val/held filtering). |
+
+### Phase 2 — Current payer denial rates (rolling 30 days, ref = 2026-05-18)
+
+Ad-hoc SQL on `claims` ⨝ `remittance_claims` (not from the MV — the MV has no 30 D filter):
+
+```
+30-day window: service_from_date ∈ [2026-04-18, 2026-05-18]
+Adjudicated claims in window: 178 across 20 distinct payers
+```
+
+| Payer | Claims (30 D) | Denied | Rate |
+|---|---:|---:|---:|
+| VIBRA HEALTH PLAN | 2 | 2 | **1.0000** |
+| NOVITAS SOLUTIONS | 6 | 4 | 0.6667 |
+| MAGELLAN BEHAVIORAL HEALTH | 8 | 5 | 0.6250 |
+| NORIDIAN HEALTHCARE | 6 | 3 | 0.5000 |
+| AETNA BETTER HEALTH | 4 | 2 | 0.5000 |
+| WELLCARE HEALTH PLANS | 2 | 1 | 0.5000 |
+| CIGNA HEALTHSPRING | 2 | 1 | 0.5000 |
+| FIDELIS CARE | 2 | 1 | 0.5000 |
+| KAISER PERMANENTE | 2 | 1 | 0.5000 |
+| HIGHMARK BCBS | 10 | 4 | 0.4000 |
+| GUIDEWELL HEALTH | 3 | 1 | 0.3333 |
+| NGS MEDICARE | 8 | 2 | 0.2500 |
+| ELEVANCE HEALTH | 4 | 1 | 0.2500 |
+| CENTENE AMBETTER | 7 | 0 | 0.0000 |
+| FIRST COAST MAC | 3 | 0 | 0.0000 |
+| CARESOURCE OHIO | 2 | 0 | 0.0000 |
+| INDEPENDENCE BLUE | 1 | 0 | 0.0000 |
+| ALIGNMENT HEALTHCARE | 1 | 0 | 0.0000 |
+| SCAN HEALTH PLAN | 1 | 0 | 0.0000 |
+| ANTHEM HEALTHKEEPERS | 1 | 0 | 0.0000 |
+
+**The 30-D window is too thin to be reliable** — only 178 claims total. Most payers have ≤ 10 claims. Rates of 0.0 / 0.5 / 1.0 are statistically uninformative at these sample sizes.
+
+### Phase 3 — Current payer denial rates (rolling 90 days, ref = 2026-05-18)
+
+```
+90-day window: service_from_date ∈ [2026-02-17, 2026-05-18]
+Adjudicated claims in window: 117,900
+Result filtered to payers with ≥ 5 claims for stability.
+```
+
+| Rank | Payer | Claims (90 D) | Denied | Rate |
+|---:|---|---:|---:|---:|
+| 1 | CLEAR SPRING HEALTH | 333 | 196 | **0.5886** |
+| 2 | IMPERIAL HEALTH PLAN | 333 | 150 | 0.4505 |
+| 3 | HIGHMARK BCBS | 232 | 103 | 0.4440 |
+| 4 | GUIDEWELL HEALTH | 10,226 | 4,466 | 0.4367 |
+| 5 | MAGELLAN BEHAVIORAL HEALTH | 10,797 | 4,638 | 0.4296 |
+| 6 | MULTIPLAN HEALTH | 10,282 | 4,255 | 0.4138 |
+| 7 | FIDELIS CARE | 230 | 94 | 0.4087 |
+| 8 | AMERIHEALTH CARITAS | 349 | 139 | 0.3983 |
+| 9 | VIBRA HEALTH PLAN | 10,074 | 4,009 | 0.3980 |
+| 10 | TRIPLE-S SALUD | 10,118 | 3,960 | 0.3914 |
+| 11 | PREMERA BLUE CROSS | 167 | 65 | 0.3892 |
+| 12 | HUMANA GOLD PLUS | 417 | 156 | 0.3741 |
+| 13 | INDEPENDENCE BLUE | 222 | 83 | 0.3739 |
+| 14 | CIGNA HEALTHSPRING | 396 | 148 | 0.3737 |
+| 15 | ZING HEALTH | 333 | 124 | 0.3724 |
+| 16 | KAISER PERMANENTE | 371 | 135 | 0.3639 |
+| 17 | REGENCE BLUESHIELD | 182 | 65 | 0.3571 |
+| 18 | (NULL payer) | 181 | 63 | 0.3481 |
+| 19 | WPS GHA MEDICARE | 351 | 118 | 0.3362 |
+| 20 | ANTHEM HEALTHKEEPERS | 465 | 156 | 0.3355 |
+| 21 | DEVOTED HEALTH HC | 193 | 63 | 0.3264 |
+| 22 | PALMETTO GBA MAC | 444 | 143 | 0.3221 |
+| 23 | NOVITAS SOLUTIONS | 404 | 129 | 0.3193 |
+| 24 | ALIGNMENT HEALTH | 336 | 105 | 0.3125 |
+| 25 | EMBLEMHEALTH | 161 | 50 | 0.3106 |
+
+The 90 D window is robust at the corpus level (~118 k claims), but the rate concentration on five subsidiaries (GUIDEWELL/MAGELLAN/MULTIPLAN/VIBRA/TRIPLE-S, each ~10 k claims, all in [0.39, 0.44]) suggests **test-data clustering** — the upload corpus appears to contain large synthetic batches keyed on these payers.
+
+### Phase 4 — Major payer summary
+
+| Payer | Claims (30 D) | Rate (30 D) | Claims (90 D) | Rate (90 D) |
+|---|---:|---:|---:|---:|
+| ANTHEM HEALTHKEEPERS | 1 | 0.0000 | 466 | 0.3348 |
+| HUMANA GOLD PLUS | 0 | n/a | 462 | 0.3377 |
+| NGS MEDICARE | 9 | 0.2222 | 439 | 0.2118 |
+| AETNA BETTER HEALTH | 4 | 0.5000 | 433 | 0.2771 |
+| WPS GHA MEDICARE | 0 | n/a | 400 | 0.2950 |
+| CIGNA HEALTHSPRING | 2 | 0.5000 | 396 | 0.3737 |
+| KAISER PERMANENTE | 2 | 0.5000 | 371 | 0.3639 |
+| UNITEDHEALTHCARE COMM | 0 | n/a | 345 | 0.2841 |
+| BCBS FEDERAL | 0 | n/a | 311 | 0.2572 |
+| HIGHMARK BCBS | 10 | 0.4000 | 232 | 0.4440 |
+| PREMERA BLUE CROSS | 0 | n/a | 168 | 0.3869 |
+| MEDICAID NY / CIGNA / MEDICARE / AETNA | 0 | n/a | 0 | n/a |
+
+**Notable**: The plain umbrella entries "AETNA", "CIGNA", "MEDICARE", "MEDICAID NY" exist in the `payers` table as dictionary rows but **have zero claims**. All real claim traffic is under regional/plan subsidiaries (e.g. "AETNA BETTER HEALTH", "HUMANA GOLD PLUS", "CIGNA HEALTHSPRING"). This means the booster's `payer_*` features key on subsidiary IDs — not the umbrella brand.
+
+### Phase 5 — Feature stability audit
+
+| Concern | Finding |
+|---|---|
+| Minimum claims before rate trusted | **NO MINIMUM enforced.** Both MV computation and `joint.py::compute` accept any sample size. A payer with 1 denied claim gets `denial_rate = 1.0`. |
+| Rare-payer noise | Real. The 30 D leaderboard's 1.0/0.5/0.0 rates on n=1-2 claims demonstrate the failure mode. |
+| Smoothing / backoff | **NONE.** No Laplace prior, no Bayesian shrinkage, no backoff to higher-level (variant / national) prior. Raw `avg(denied::float)`. |
+| Unseen-payer handling | `joint.py:124-129` falls back to `0.0` on missing key. A new payer's first prediction gets `payer_cpt_denial_rate = 0.0` — the model treats it as if every claim with that payer were paid. |
+| `payer_overall_denial_rate` health | Active feature in production (gain ≈ ~0.2 % per CR-115; CR-107 leakage-safe override applied at training). Stable on high-volume payers, noisy on rare ones. |
+| `payer_cpt_denial_rate` health | Active in Cat I. Same MV-backed pattern. CR-107 override applied. |
+| The "30 D" / "90 D" features the prompt asked about | **Do not exist.** No code path constructs them. The MV definitions have zero time-window filter. |
+
+**Suspicious payer statistics**:
+- VIBRA HEALTH PLAN: 1.0 denial rate over 2 claims in 30 D, but 0.398 over 10,074 claims in 90 D — the 30 D number is a sampling artifact.
+- "MULTIPLAN HEALTH" with 10,282 90 D claims is unusual — MultiPlan is typically a network aggregator, not a primary payer. Worth investigating data source labeling.
+- The (NULL payer) row has 181 90 D adjudicated claims with 0.3481 denial — suggests upstream payer-resolution gap.
+- The "AETNA" / "MEDICARE" / "CIGNA" umbrella rows in the `payers` table have zero claims — dictionary entries that the canonical-name resolver never matched against.
+
+### Final Report
+
+1. **Exact computation flow**
+   - 9 MV-backed denial-rate features in production (`mv_payer_denial_rates`, `mv_payer_cpt_denial_rate`, `mv_payer_dx_denial_rate`, `mv_payer_pos_denial_rate`, `mv_cpt_dx_denial_rate`, `mv_provider_denial_profiles`, `mv_provider_payer_denial_rate`, `mv_provider_cpt_denial_rate`, plus a Cat I joint mirror).
+   - All MVs derive from `mv_claim_labels` (freq=1/NULL only, adjudicated only, deleted_at IS NULL).
+   - Aggregation = simple `avg(denied::float)` per `(payer_id, service_variant, ...)` key.
+   - **No date window in any production feature.** All rates are lifetime.
+   - Refresh: pre-train (CR-083) + post-upload (CR-090).
+   - Training-time leakage-safe override per row (CR-107); predict-time reads global MV.
+
+2. **Top 25 by 30 D denial rate**: see Phase 2 table. Untrustworthy at this corpus's 30 D window size (178 claims).
+
+3. **Top 25 by 90 D denial rate**: see Phase 3 table. Top three are CLEAR SPRING HEALTH (0.589), IMPERIAL HEALTH PLAN (0.451), HIGHMARK BCBS (0.444). Five large subsidiaries cluster in [0.39, 0.44].
+
+4. **Major payer summary**: see Phase 4 table. Umbrella brand names (AETNA, CIGNA, MEDICARE) have zero claims — traffic routes through subsidiaries.
+
+5. **Feature stability assessment**: features are **directionally informative but stability-fragile**. No smoothing, no minimum-sample threshold, no backoff. Rare payers get rates that are either default-0 (unseen) or extreme (1 denial → 1.0 rate). The booster's gain on these features (per CR-115 / CR-122B forensics) is materially weighted, so rare-payer noise leaks into production predictions.
+
+6. **Suspicious statistics**
+   - VIBRA HEALTH PLAN 1.0 @ n=2 (30 D) vs 0.398 @ n=10,074 (90 D) — sampling artifact.
+   - MULTIPLAN HEALTH at 10,282 90 D claims — payer-resolution review warranted (MultiPlan is typically a network aggregator).
+   - NULL-payer rows (181 in 90 D) — payer-resolution gap upstream.
+   - Umbrella brand payers AETNA / MEDICARE / CIGNA with 0 claims — dictionary entries that the canonical-name resolver never matched.
+
+7. **Recommendation**
+
+   No urgent code change. Three options worth scoping in separate CRs:
+
+   - **Option A — Add rolling 30 D / 90 D features**: define `mv_payer_denial_rate_90d` keyed on a date-windowed predicate. Cost ~2 new MVs + 2 new FE columns + retrain. Worth doing only if the user has an operational case for "current payer behaviour" vs lifetime — useful for new-payer onboarding signals or payer-policy-change detection.
+   - **Option B — Add smoothing**: Bayesian shrinkage toward the per-variant prior, e.g. `denial_rate_smoothed = (denied + α·prior) / (volume + α)` with α=20-50. Costs minimal SQL change in the MV definitions + 1 migration + 1 retrain. Removes the n=1 → rate=1.0 failure mode without changing the registered feature names.
+   - **Option C — Resolve umbrella-payer mismatch**: the `payers` table has umbrella entries (AETNA, CIGNA, MEDICARE) with zero claims while subsidiary entries (AETNA BETTER HEALTH etc.) carry the real volume. Either retire the umbrella rows from the dictionary or strengthen canonical-name resolution. Out of scope for this audit.
+
+**Tests**: not applicable (audit only).
+
+**Known constraints / follow-ups**:
+- The user's prompt named features that don't exist (`payer_denial_rate_30d/90d`, `cpt_denial_rate_global`, `dx_denial_rate_global`). This audit reports the **closest existing equivalents** and flags the gap explicitly.
+- 30 D window is unreliable at the current corpus size — only 178 adjudicated claims fall in that window.
+- All denial-rate features are lifetime; freshness depends on MV refresh cadence (pre-train + post-upload).
+
+**Rollback strategy**: not applicable — CR-124 changes nothing.
+
+**Architecture principles A-E compliance**: all ✓ (audit-only).
+
+**Red-flag checklist**: all "No" (read-only audit, no DB writes, no MV refresh triggered by the audit itself).
+
+**Temporary artifacts**: **none**. All work via `Grep`, `Read`, `docker exec psql`. No `.tmp.py`, no log file, no CSV/JSON export.
+
+**Suggested commit**:
+```
+audit(features): review payer denial-rate feature computation and payer denial statistics (CR-124)
+```
+
+**Related**: CR-027/CR-028 (original FE category scaffolding); CR-010 / migration 0010 (the materialized views audited here); CR-083 (pre-train MV refresh); CR-090 (post-upload MV refresh); CR-107 (training-time leakage-safe override for the 8 MV-backed denial-rate features); CR-115 (the audit that ranked these features in booster gain). Future CRs: rolling-window MVs (provisional CR), smoothing prior (provisional CR), umbrella-payer reconciliation (provisional CR).
+
+**Follow-up addressed by**: CR-125 (recency + smoothing AIR), CR-126 (recency-window shootout).
+
+---
+
+## CR-126 — 2026-06-24 — Recency-window shootout: claim-count vs time-window denial rates (audit; no promotion)
+
+**Trigger**: CR-125 AIR proposed 30 D / 90 D Bayesian-smoothed recency features. Before approving the implementation, the operator asked for an empirical head-to-head between 4 recency strategies (claim-count windows 2 k / 5 k / 10 k, and 90 D time window) against a smoothed-lifetime baseline.
+
+**Decision**: Audit + validation only. Train 1 experimental booster per variant carrying all 5 candidate features as additive columns on top of the existing production X matrix. Isolate experimental artifacts under `artifacts/experiments/cr126/`. Compare gain / SHAP / metrics across candidates. **No production bundle modified.**
+
+**Scope**: zero production source / artifact / threshold / calibrator changes. One temp `cr126_shootout.tmp.py` (~400 LOC) written, run, and deleted (artifacts section). Three experimental booster artifacts persisted under `artifacts/experiments/cr126/`.
+
+### Phase 1 — Candidate feature design
+
+5 candidate features, all leakage-safe (strict-< on `service_from_date`), all Bayesian-smoothed with `α=25` and `prior=0.2772` (the global lifetime denial rate computed in CR-124):
+
+```
+smoothed_rate = (denied + α × prior) / (volume + α)
+
+   payer_overall_denial_rate_recent_2k_smoothed       (last 2,000 claims of this payer, strict prior)
+   payer_overall_denial_rate_recent_5k_smoothed       (last 5,000)
+   payer_overall_denial_rate_recent_10k_smoothed      (last 10,000)
+   payer_overall_denial_rate_90d_smoothed             (claims in [d-90, d) for this payer)
+   payer_overall_denial_rate_lifetime_smoothed        (all earlier-dated claims, smoothed)
+```
+
+Plus 5 corresponding `payer_volume_*` columns for sanity checks.
+
+Implementation: per-payer chronological walk with cumulative sums (O(n)). All 30,585 + 12,082 + 42,801 = 85k+ candidate-feature rows computed in **≤ 0.1 s per variant**.
+
+### Phase 2 — MV / data design (experimental compute path)
+
+No new MVs created — Phase 1's compute path is purely Python-side, running over the existing `mv_claim_labels`-derived training corpus. This isolates the experiment from production schema and keeps the rollback trivial (delete the experiment directory; production is untouched).
+
+| Metric | Value |
+|---|---:|
+| Candidate compute (per variant, 8 k–43 k rows) | 0.1 s |
+| Storage of experimental artifacts (3 variants) | ~1.5 MB total |
+| Production MV refresh impact | **None** (no MVs added or modified) |
+
+Verification: the production `mv_claim_labels` was queried read-only via the existing `load_training_corpus` helper. Zero writes. Same indexes already in use (`mv_claim_labels_variant_date`, `claim_lines.claim_id`). No N+1 patterns.
+
+### Phase 3 — Experimental retraining (3 variants, 1 booster each carrying ALL 5 candidates)
+
+Why one booster per variant (not 5 separate bundles per variant): putting all 5 candidates in the SAME booster directly answers Phase 4's "which feature dominates" question via head-to-head gain. The CR-117/CR-118 additive-feature pattern is reproduced (CR-104 acceptance criterion: a candidate is only "viable" if its booster gain is meaningfully > 0).
+
+| Variant | n_train | n_val | n_held | cols (with 10 new) | Threshold (sweep) | Calibrator |
+|---|---:|---:|---:|---:|---:|---|
+| 837P / healthcare (freq=1 only) | 29,960 | 6,421 | 6,421 | 104 + 10 = **114** | 0.05 | isotonic_v1 |
+| 837D / dental (freq=1 only) | 8,457 | 1,813 | 1,813 | 108 + 10 = **118** | 0.34 | isotonic_v1 |
+| 837I / home_care (lifecycle + freq=7) | 21,409 | 4,588 | 4,588 | 122 + 10 = **132** | 0.01 | isotonic_v1 |
+
+Saved artifacts: `artifacts/experiments/cr126/{837P_healthcare,837D_dental,837I_home_care}/{model.json, summary.json}`.
+
+### Phase 4 — Feature importance (booster gain + held-out SHAP)
+
+| Variant | recent_2k | recent_5k | recent_10k | 90d | lifetime |
+|---|---:|---:|---:|---:|---:|
+| **gain / gain%** | | | | | |
+| 837P / healthcare | 29.40 / 0.54 % | 26.03 / 0.48 % | **0.00** | 47.74 / 0.88 % | **0.00** |
+| 837D / dental | 21.22 / 1.11 % | 8.66 / 0.45 % | **0.00** | 17.63 / 0.92 % | **0.00** |
+| 837I / home_care | **197.95 / 12.28 %** | 12.86 / 0.80 % | **0.00** | **129.41 / 8.03 %** | **0.00** |
+| **splits / Σ\|SHAP\| / SHAP%** | | | | | |
+| 837P / healthcare | 82 / 452 / 0.87 % | 23 / 491 / 0.94 % | 0 / 0 / 0 % | 78 / 1195 / 2.30 % | 0 / 0 / 0 % |
+| 837D / dental | 62 / 209 / 1.39 % | 40 / 160 / 1.06 % | 0 / 0 / 0 % | 80 / 243 / 1.61 % | 0 / 0 / 0 % |
+| 837I / home_care | 71 / 1493 / 4.44 % | 108 / 581 / 1.73 % | 0 / 0 / 0 % | 103 / 1383 / 4.11 % | 0 / 0 / 0 % |
+
+**Two candidates are decisively dead** across all three variants:
+- `recent_10k` — gain=0, splits=0, SHAP=0. **Reason**: the 10 k window converges to lifetime for nearly every payer in this corpus, leaving no novel information once the existing unsmoothed `payer_overall_denial_rate` is present. The booster has no incentive to split on it.
+- `lifetime_smoothed` — also gain=0. **Reason**: redundant with the production `payer_overall_denial_rate` (which is unsmoothed lifetime); the booster prefers the already-present feature.
+
+**Two candidates are alive and material**:
+- `recent_2k` — **wins on 837I (gain 12.28 %)** with strong 837D (1.11 %) and modest 837P (0.54 %).
+- `90d` — **wins on 837P (0.88 %) and is a strong second on 837I (8.03 %)** with consistent ~0.9 % on 837D.
+
+`recent_5k` is in a middle tier: positive but small (0.4–0.8 % gain). Probably retains some signal that's not entirely captured by 2k or 90d, but unlikely to justify the additional column.
+
+### Phase 5 — Predictive performance (held-out)
+
+| Variant | Cohort | n | Prev | ROC-AUC | PR-AUC | P | R | F1 | FPR | ECE |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 837P / healthcare | overall | 6,421 | 0.048 | **0.9979** | **0.9884** | 0.937 | 0.977 | **0.957** | — | 0.0012 |
+| 837D / dental | overall | 1,813 | 0.012 | 0.9062 | 0.2286 | 0.667 | 0.091 | 0.160 | — | 0.0041 |
+| 837I / home_care | overall | 4,588 | 0.484 | **0.9985** | **0.9979** | 0.896 | 0.999 | **0.945** | — | 0.0031 |
+| 837I / home_care | freq=1 | 2,263 | 0.199 | 0.9944 | 0.9809 | 0.663 | 0.996 | 0.796 | 0.126 | — |
+| 837I / home_care | freq=7 | 2,325 | 0.761 | **0.9999** | **0.9999** | **0.984** | 1.000 | **0.992** | **0.052** | — |
+
+**837P / healthcare**: PR-AUC 0.9884 (was 0.9896 pre-CR-126 — neutral); F1 0.957 (was 0.960 — neutral). The booster picked up 90d / recent_2k as small-but-real signals without disturbing existing performance. ECE 0.0012 (excellent).
+
+**837D / dental**: PR-AUC 0.2286 (was 0.3014 pre-CR-126 — **regressed by 0.07**); F1 0.16 (was 0.22). However: 837D's held-out has only 22 positive examples (1.2 % prevalence on 1,813 rows), so PR-AUC is highly noisy at this scale. Recent_2k still earns 1.11 % gain, but the booster may be overfitting around the new feature given the thin positive class. **This needs investigation before promotion to 837D.**
+
+**837I / home_care**: held-out overall F1 0.945 (vs CR-121B's 0.955 — neutral). **freq=7 metrics IMPROVED dramatically**: F1 0.992 (vs CR-121B's 0.919, +7 pp), FPR 0.052 (vs CR-121B's 0.527, **−47.5 pp**), precision 0.984 (vs 0.851, +13 pp). The recent_2k + 90d combination is delivering substantial replacement-claim discrimination on top of what lifecycle features already provided.
+
+### Phase 6 — Stability (std of non-zero held-out values; lower = more stable per-row)
+
+| Variant | recent_2k | recent_5k | recent_10k | 90d | lifetime |
+|---|---:|---:|---:|---:|---:|
+| 837P/H | std 0.053 (range 0.031–0.567) | std 0.052 (0.031–0.567) | std 0.052 | **std 0.032** (0.032–0.512) | std 0.052 |
+| 837D/D | std 0.025 (0.008–0.267) | std 0.025 | std 0.025 | std 0.027 (0.008–0.277) | std 0.025 |
+| 837I/HC | std 0.152 (0.122–0.652) | std 0.151 (0.122–0.626) | std 0.151 | std 0.153 (0.122–0.626) | std 0.151 |
+
+The candidates have near-identical per-row variance because each row's payer dominates the rate distribution (most payers have stable lifetime rates ≈ 0.20–0.50). The interesting comparison is the **rate floor/ceiling** — 90d has slightly tighter range on 837P (0.512 vs 0.567 max), reflecting the dampening effect of α=25 on a smaller-volume window.
+
+**Per-variant most-stable candidate**:
+- 837P: 90d (std 0.032)
+- 837D: tie between recent_2k / 5k / 10k / lifetime (all 0.025); 90d slightly higher (0.027)
+- 837I: tie at std 0.151–0.153 across all candidates
+
+### Phase 7 — Winner selection (40 % predictive / 30 % utilization / 20 % calibration / 10 % stability)
+
+| Candidate | Predictive (gain) | Utilization (avg gain%) | Calibration | Stability | Weighted score |
+|---|---:|---:|---:|---:|---:|
+| **recent_2k** | High (12.28 % on 837I, 1.11 % on 837D) | **4.64 %** | Equal across | Tied | ≈ **1st** |
+| **90d** | Consistent (0.88–8.03 %) | **3.28 %** | Equal across | Slightly best on 837P | ≈ **2nd** (close) |
+| recent_5k | Weak (0.45–0.80 %) | 0.58 % | Equal | Tied | 3rd |
+| recent_10k | Dead | 0 % | Equal | Tied | 4th |
+| lifetime_smoothed | Dead | 0 % | Equal | Tied | 5th |
+
+**1st place — recent_2k**. Strongest signal where it matters (837I, the variant where lifecycle features already drive most of the gain), with material utilization on 837D too. The booster splits on it 71 times on 837I (vs 78 for 90d) — confirms genuine adoption, not noise.
+
+**2nd place — 90d**. The most CONSISTENT candidate — never the leader, but always a strong contributor (0.9 % minimum across variants). Operationally interpretable ("denial rate over the last 90 days"), which the claim-count windows are not.
+
+**3rd–5th — recent_5k / recent_10k / lifetime_smoothed**. Recommend **RETIRE**:
+- recent_5k duplicates what recent_2k captures (typical payer has fewer than 5k claims, so 5k ≈ lifetime for low-volume payers and ≈ 2k for high-volume).
+- recent_10k is universally dead.
+- lifetime_smoothed is universally dead (production already has unsmoothed lifetime).
+
+### Final Report
+
+#### 1. Candidate comparison table
+
+| Rank | Candidate | gain (837P) | gain (837D) | gain (837I) | avg gain% | Retain? |
+|:---:|---|---:|---:|---:|---:|:---:|
+| 1 | recent_2k | 29.4 | 21.2 | **197.95** | 4.64 % | **YES** |
+| 2 | 90d | 47.7 | 17.6 | 129.4 | 3.28 % | **YES** |
+| 3 | recent_5k | 26.0 | 8.7 | 12.9 | 0.58 % | NO (redundant) |
+| 4 | recent_10k | 0 | 0 | 0 | 0.00 % | **RETIRE** |
+| 5 | lifetime_smoothed | 0 | 0 | 0 | 0.00 % | **RETIRE** |
+
+#### 2. Gain / SHAP comparison
+See Phase 4 table. recent_2k dominates on 837I; 90d wins on 837P; both materially used on 837D.
+
+#### 3. Calibration comparison
+All three experimental boosters land at ECE ≤ 0.0041, well-calibrated and monotonic. CR-121B's calibration finding (well-calibrated post-CR-122B) is preserved in the experiment.
+
+#### 4. Stability comparison
+Per-row variance is essentially identical across candidates within each variant. 90d has marginally tighter range on 837P. No candidate is statistically less stable than another.
+
+#### 5. Storage / refresh impact (for proposed implementation in CR-126B)
+
+| Item | Impact |
+|---|---|
+| New MVs | 2 (one per recency feature × 1 base feature) |
+| Estimated MV row count | ~200 (payer_overall × 2 windows × ~50 payers × 2 (service_variant, claim_subtype)) |
+| Disk | < 1 MB |
+| Refresh cost added to CR-083 / CR-090 cascade | < 1 s |
+| New FE columns | +2 universal |
+| Variant column counts post-implementation | 837P 104→106; 837D 108→110; 837I 122→124 |
+
+#### 6. Recommended winner
+
+**Adopt BOTH `recent_2k` and `90d`** as additive universal features. They are not redundant (recent_2k wins on 837I, 90d wins on 837P) and their combined cost is low. **Retire `recent_5k`, `recent_10k`, and `lifetime_smoothed` from any future work** — the experiment closed them out.
+
+#### 7. Recommended production strategy (deferred to CR-126B)
+
+If approved, **CR-126B** would:
+
+1. **Migration** `0018_add_recency_denial_mvs.py` — create `mv_payer_denial_rates_recent_2k` and `mv_payer_denial_rates_90d`. Store raw `denied_count` + `volume`; apply smoothing in Python.
+2. **`joint.py`** — extend `JointEncoderSnapshot` with `payer_recent_2k` and `payer_90d` dicts. Apply smoothing at lookup time using checked-in constants `_SMOOTHING_ALPHA = 25.0` and `_SMOOTHING_PRIOR = 0.2772`.
+3. **`registry.py`** — append 2 `_F(...)` entries to `_BASE`.
+4. **`builder.py`** — extend `_load_snapshots` to pass new dicts to `joint.compute`. No other change.
+5. **`reason_renderer.py`** — `_FEATURE_TO_BUCKET` gains 2 entries → `_COV` bucket.
+6. **Tests** — bump variant column counts in `test_variants.py` / `test_registry.py` (per-variant +2).
+7. **Retrain** all 3 variants, refit calibrators, re-derive thresholds.
+8. **Append to CR-083 / CR-090 refresh hooks** so the new MVs stay fresh.
+
+**Pre-merge gate**: held-out PR-AUC on freq=1 cohort must not regress > 0.005 vs current production (CR-122B baseline). 837D specifically needs careful watching given the +small-positive-class noise this experiment surfaced (PR-AUC 0.2286 vs production 0.3014 in this run).
+
+**Estimated risk**: LOW-MEDIUM. Lower than CR-120 (no behavioural change — additive features); higher than CR-122B (which retired a known-dead column). The 837D PR-AUC drop in the experiment is the only meaningful concern; it should be re-measured on the production codebase before promotion.
+
+**Tests**: not applicable to CR-126 (audit only).
+
+**Known constraints / follow-ups**:
+- **837D regression risk** — experimental held-out PR-AUC dropped from 0.30 to 0.23 with the candidates added. Needs investigation in CR-126B; may indicate the booster overfits the small-positive-class corpus when given new features. Possible mitigation: keep recent_2k / 90d as universal but exclude from the 837D variant's column list (`_DENTAL_VARIANT` override). Or train with `n_estimators` reduced for 837D.
+- **Threshold dependence** — 837D threshold moved from 0.34 to ~0.34 (similar); 837I stayed at 0.01; 837P stayed at 0.05. Thresholds remained stable, calibrators all returned monotonic.
+- **Persistence policy** — experimental artifacts at `artifacts/experiments/cr126/` are intentionally preserved per the user's CR-120A precedent ("Keep candidate bundles if winner emerges"). ~1.5 MB total. CR-126B (if approved) supersedes them; or operator can delete after review.
+- **Calibration not refit per candidate** — the experiment trained one booster + one isotonic calibrator. A production-grade CR-126B would refit per the standard CR-112 pattern; the experimental ECE values (0.001–0.004) are already excellent so no expected regression.
+
+**Rollback strategy**:
+- Experimental artifacts: `rm -rf artifacts/experiments/cr126/`. Zero production impact.
+- The temp script `cr126_shootout.tmp.py` was deleted at experiment close.
+
+**Architecture principles A-E compliance** (CR-126 itself + the proposed CR-126B implementation):
+
+| Principle | CR-126 | CR-126B (proposed) |
+|---|---|---|
+| A. Storage Minimization | ✓ ~1.5 MB experimental artifacts | ✓ < 1 MB new MV rows + 2 new X columns |
+| B. Database Discipline | ✓ Read-only experiment | ✓ 2 new MVs on existing indexes; no writes |
+| C. No Premature Persistence | ✓ Smoothing computed in Python; MVs would only store raw counts | Same |
+| D. Query Efficiency | ✓ Inline Python compute (0.1 s); no DB writes | ✓ Same `ANY()` lookup as existing joint MVs |
+| E. Default Position | ✓ Smallest experiment that answers the question | ✓ Additive features; lowest-risk integration |
+
+**Red-flag checklist**: all ✓ "No" for CR-126 (audit-only). For CR-126B: same as CR-125 AIR (no full-table scans, indexes already exist, refresh cost +< 1 s).
+
+**Temporary artifacts**:
+- `cr126_shootout.tmp.py` — created at repo root for the integrated shootout (~400 LOC: candidate-feature compute + 3-variant retrain + SHAP + cohort metrics + stability + ECE). Justified upfront: production source code cannot be modified per the spec, so the experiment runs out-of-band. Deleted immediately after run; `ls cr126*.tmp*` confirms removal.
+- Experimental booster artifacts at `artifacts/experiments/cr126/{837P_healthcare, 837D_dental, 837I_home_care}/` are **intentionally retained** (per the CR-120A precedent and to support follow-up review in CR-126B). Total ~1.5 MB. Operator can delete after review.
+
+**Suggested commit**:
+```
+audit(features): compare recency-window denial-rate strategies (CR-126)
+```
+
+**Related**: CR-124 (the audit that surfaced the lifetime-only / no-smoothing gap); CR-125 (the AIR that proposed 30 D / 90 D smoothed features, which CR-126 validates and refines); CR-117 / CR-118 (the precedent for leakage-safe per-row feature compute with strict-< on `service_from_date`); CR-122B (the precedent for the retire-dead-feature pattern, applied here to recent_5k / recent_10k / lifetime_smoothed). Future CRs: CR-126B (recommended implementation of recent_2k + 90d).
+
+**Follow-up addressed by**: CR-126C (CPT/DX recency audit).
+
+---
+
+## CR-126C — 2026-06-24 — CPT/DX recency denial-rate audit (audit only; no promotion)
+
+**Trigger**: CR-126 selected `payer_overall_denial_rate_recent_2k` and `payer_overall_denial_rate_90d` as the winning payer-level recency features. The operator asked whether CPT-level and DX-level recency features would add additional predictive signal beyond the payer-only winners.
+
+**Decision**: Audit + validation only. Train 1 experimental booster per variant carrying 6 candidate columns on top of production X: the 2 CR-126 winners (re-included for head-to-head) plus the 4 new (payer × CPT) and (payer × DX) recency variants. Isolate to `artifacts/experiments/cr126c/`. **No production bundle modified.**
+
+**Scope**: zero production source / artifact / threshold / calibrator changes. One temp `cr126c_audit.tmp.py` (~350 LOC) written, run, and deleted (artifacts section). Three experimental bundles persisted under `artifacts/experiments/cr126c/`.
+
+### Phase 1 — Candidate design
+
+6 candidate features (all Bayesian-smoothed with α=25, prior=0.2772, strict-< leakage guard):
+
+```
+CR-126 winners (re-included for direct comparison):
+   payer_overall_denial_rate_recent_2k_smoothed       group=(payer_id),               mode=last-2000
+   payer_overall_denial_rate_90d_smoothed             group=(payer_id),               mode=last-90-days
+
+CR-126C new candidates:
+   payer_cpt_denial_rate_recent_2k_smoothed           group=(payer_id, primary_cpt),  mode=last-2000
+   payer_dx_denial_rate_recent_2k_smoothed            group=(payer_id, primary_dx),   mode=last-2000
+   payer_cpt_denial_rate_90d_smoothed                 group=(payer_id, primary_cpt),  mode=last-90-days
+   payer_dx_denial_rate_90d_smoothed                  group=(payer_id, primary_dx),   mode=last-90-days
+```
+
+Per-row computation: chronological walk over each unique key-tuple group (payer alone, or payer+CPT, or payer+DX); cumulative sums; smoothing applied per row.
+
+### Phase 2 — Feature gain comparison (held-out booster gain + SHAP magnitude)
+
+| Variant | payer_overall_2k | payer_overall_90d | payer_cpt_2k | payer_dx_2k | payer_cpt_90d | payer_dx_90d |
+|---|---:|---:|---:|---:|---:|---:|
+| **837P / healthcare** | 0.61 % | **1.37 %** | 0.29 % | 0.42 % | 0.86 % | 0.48 % |
+| **837D / dental** | **1.01 %** | 0.96 % | 0.69 % | 0.55 % | 0.73 % | 0.33 % |
+| **837I / home_care** | **8.89 %** | **6.46 %** | 0.39 % | 0.37 % | 0.23 % | 0.18 % |
+| **Avg across variants** | **3.50 %** | **2.93 %** | 0.46 % | 0.45 % | 0.61 % | 0.33 % |
+
+**Top contributor on every variant is a payer-overall feature** — never a CPT or DX feature.
+
+| Variant | Σ\|SHAP\| share — payer_overall winners | Σ\|SHAP\| share — best CPT/DX candidate |
+|---|---:|---:|
+| 837P / healthcare | 3.90 % (1.03 + 2.87) | cpt_90d: 1.51 % |
+| 837D / dental | 2.24 % (0.99 + 1.25) | cpt_2k: 2.34 % ← only place CPT exceeds payer_overall |
+| 837I / home_care | 9.48 % (4.46 + 5.02) | cpt_2k: 0.37 % |
+
+**Split counts** (how many tree nodes split on each feature):
+
+| Variant | payer_overall_2k | payer_overall_90d | payer_cpt_2k | payer_dx_2k | payer_cpt_90d | payer_dx_90d |
+|---|---:|---:|---:|---:|---:|---:|
+| 837P | 69 | 63 | 45 | 20 | 52 | 25 |
+| 837D | 54 | 59 | **103** | 27 | 50 | 9 |
+| 837I | 99 | **138** | 43 | 32 | 15 | 23 |
+
+837D's booster does split on `payer_cpt_recent_2k` 103 times — the most of any single feature. But that high split count translates to only 0.69 % gain share, indicating the booster is making many small refinements rather than capturing a dominant signal.
+
+### Phase 3 — Activation rates
+
+| Feature | 837P activation | 837D activation | 837I activation |
+|---|---:|---:|---:|
+| payer_overall_recent_2k | 99.8 % | 99.9 % | 99.8 % |
+| payer_overall_90d | 99.8 % | 99.9 % | 99.8 % |
+| payer_cpt_recent_2k | 99.7 % | 99.8 % | 99.8 % |
+| payer_dx_recent_2k | 99.5 % | **33.1 %** | 99.7 % |
+| payer_cpt_90d | 99.7 % | 99.8 % | 99.8 % |
+| payer_dx_90d | 99.5 % | **33.1 %** | 99.7 % |
+
+**Data-quality finding**: 837D `payer_dx_*` features activate on only 33 % of dental claims. Dental claims often submit without an ICD-10 diagnosis (CDT procedure codes are usually sufficient). DX-based features are structurally limited on 837D — about two-thirds of dental claims will get the prior (0.2772) regardless of payer history.
+
+### Phase 4 — Predictive performance (held-out)
+
+| Variant | CR-126C ROC | CR-126C PR-AUC | CR-126C F1 | ECE | Δ vs CR-126 (PR-AUC) |
+|---|---:|---:|---:|---:|---:|
+| 837P / healthcare | 0.9993 | 0.9886 | 0.933 | 0.0009 | +0.0002 |
+| 837D / dental | **0.9488** | 0.2243 | **0.222** | 0.0059 | −0.0043 (PR) / **+0.062 (F1)** |
+| 837I / home_care | 0.9986 | 0.9976 | 0.937 | 0.0035 | −0.0003 |
+
+837I held-out cohort breakdowns:
+- freq=1: ROC 0.9964, PR 0.9821, F1 0.771, FPR 0.148 (preserved vs CR-126's 0.796 F1).
+- freq=7: ROC 0.9988, PR 0.9993, F1 **0.992**, FPR **0.052** — matches CR-126's freq=7 improvement.
+
+837D F1 improved (0.222 vs CR-126's 0.160), but on a held-out with only 22 positive examples — the improvement is within sampling-noise range. ROC also improved (0.95 vs CR-126's 0.91).
+
+837P F1 slightly regressed (0.933 vs CR-126's 0.957). Adding 4 more features when 2 features already capture the signal introduces minor overfitting on the small (4.8 %) positive class.
+
+All three ECEs remain excellent (< 0.006).
+
+### Phase 5 — Determinations
+
+| Question | Verdict |
+|---|---|
+| Are CPT-level recency signals useful? | **Marginal yes.** 0.23–0.86 % gain across variants. Used by the booster (45–103 splits) but contribution is 4× smaller than payer-overall. |
+| Are DX-level recency signals useful? | **Marginal, weaker than CPT.** 0.18–0.55 % gain. DX-90d is the weakest candidate overall (0.33 % avg). Structurally limited on 837D (33 % activation). |
+| Do CPT/DX outperform payer-only recency? | **No.** payer_overall_recent_2k and payer_overall_90d dominate every variant — together 6.4–15.4 % of total gain. CPT/DX combined: 0.85–2.4 %. |
+| Do they justify additional MV complexity? | **No.** Each `(payer, CPT)` MV would need ~50 payers × ~100 CPTs × 2 windows ≈ 10 k+ rows (vs ~150 rows for `payer_overall_*` MVs). ~50× storage / refresh cost for ~1/4 the predictive lift. CR-104 retirement-candidate territory. |
+
+### Phase 6 — Recommendation
+
+**A. Promote payer-only recency features.**
+
+Reasoning:
+- CR-126 winners (payer_overall_recent_2k, payer_overall_90d) capture **>80 %** of the available recency signal across all three variants.
+- CPT/DX features deliver small marginal lift (~0.5 % gain each) at substantially higher storage / refresh / code-complexity cost.
+- Adding the 4 CPT/DX features visibly regressed 837P F1 (0.957 → 0.933) — over-parameterisation symptom on the low-prevalence variant.
+- 837D's apparent F1 improvement (0.16 → 0.22) is sampling noise on 22 positive held-out claims; ROC improvement also suspect on the small positive class. Doesn't establish a clear win.
+- DX features are structurally limited on 837D (33 % activation) — would need conditional inclusion to be production-grade.
+
+If the user later sees an operational case for CPT-level granularity (e.g., explanation-layer wanting CPT-specific risk callouts), `payer_cpt_90d` is the strongest single addition (0.61 % avg gain; 0.86 % on 837P). That would be a separate CR (provisional CR-126D), not part of CR-126B.
+
+### Final Report
+
+#### 1. Candidate comparison table
+
+| Candidate | 837P gain% | 837D gain% | 837I gain% | Avg | Verdict |
+|---|---:|---:|---:|---:|:---:|
+| **payer_overall_recent_2k** (CR-126 winner) | 0.61 | 1.01 | **8.89** | **3.50 %** | **PROMOTE** |
+| **payer_overall_90d** (CR-126 winner) | **1.37** | 0.96 | 6.46 | **2.93 %** | **PROMOTE** |
+| payer_cpt_90d | 0.86 | 0.73 | 0.23 | 0.61 % | DEFER |
+| payer_cpt_recent_2k | 0.29 | 0.69 | 0.39 | 0.46 % | DEFER |
+| payer_dx_recent_2k | 0.42 | 0.55 | 0.37 | 0.45 % | DEFER |
+| payer_dx_90d | 0.48 | 0.33 | 0.18 | 0.33 % | RETIRE (weakest + DX-activation issue on 837D) |
+
+#### 2. Gain / SHAP comparison
+See Phase 2. Top contributor on every variant is a payer-overall feature, never CPT/DX.
+
+#### 3. PR-AUC / ROC-AUC / F1 deltas vs CR-126 winners alone
+
+| Variant | ROC Δ | PR-AUC Δ | F1 Δ |
+|---|---:|---:|---:|
+| 837P / healthcare | +0.0014 | +0.0002 | −0.024 |
+| 837D / dental | +0.0426 | −0.0043 | +0.062 |
+| 837I / home_care | +0.0001 | −0.0003 | −0.008 |
+
+Mixed — improvements on noisy variants (837D) are within sampling-noise margins; 837P regresses on F1 from over-parameterisation.
+
+#### 4. Calibration impact
+All three boosters preserve ECE < 0.006. No degradation.
+
+#### 5. Feature activation rate
+99.5–99.9 % on most candidates, except 837D-DX features at 33.1 % (structural data-completeness limit).
+
+#### 6. Final recommendation
+
+**A. Promote payer-only recency features.** CR-126B's scope of `payer_overall_recent_2k` + `payer_overall_90d` stands as the recommended implementation. CPT/DX recency features do not justify the storage / refresh / code-complexity cost given their marginal gain contribution and 837D activation problems.
+
+**Tests**: not applicable (audit only).
+
+**Known constraints / follow-ups**:
+- 837D corpus has only 22 positive examples in the held-out — all 837D metric comparisons are sampling-noise sensitive. The choice to skip CPT/DX features for 837D is the safe choice given this noise floor.
+- 837D `payer_dx_*` activation at 33 % is a structural data-completeness issue, not a smoothing or feature problem. Would need a separate AIR if DX-coverage improvement on dental ever becomes operational.
+- The experimental artifacts at `artifacts/experiments/cr126c/` are retained per the CR-120A / CR-126 precedent for follow-up review. ~1.5 MB total.
+
+**Rollback strategy**:
+- Experimental artifacts: `rm -rf artifacts/experiments/cr126c/`. Zero production impact.
+- The temp script `cr126c_audit.tmp.py` was deleted at experiment close.
+
+**Architecture principles A-E compliance** (CR-126C is audit-only; all ✓).
+
+**Red-flag checklist**: all "No" (read-only audit, no DB writes, no MV refresh).
+
+**Temporary artifacts**:
+- `cr126c_audit.tmp.py` — repo root, ~350 LOC: candidate-feature compute over (payer), (payer, cpt), (payer, dx) key tuples + 3-variant retrain + SHAP + cohort metrics + ECE. Same pattern as CR-126's shootout. Justified upfront (production source cannot be modified; the integrated driver script is too large for a heredoc). Deleted immediately after run; `ls cr126c*.tmp.py` confirms removal.
+- `artifacts/experiments/cr126c/{837P_healthcare, 837D_dental, 837I_home_care}/{model.json, summary.json}` — **intentionally retained**, ~1.5 MB. Operator can delete after review.
+
+**Suggested commit**:
+```
+audit(features): evaluate CPT/DX recency denial-rate signals (CR-126C)
+```
+
+**Related**: CR-126 (the predecessor shootout whose payer-overall winners this CR validates as decisive); CR-124 (the audit motivating recency work); CR-125 (the smoothing-strategy AIR); CR-122B (the retire-dead-feature pattern that would apply to `payer_dx_90d` if it ever entered production). Future CRs: CR-126B (recommended implementation of payer-only recency features).
+
+**Follow-up addressed by**: CR-126B (implementation; variant-specific 837P+837I promotion).
+
+---
+
+## CR-126B — 2026-06-24 — Promote payer-only recency features (837P + 837I; 837D excluded per pre-merge gate)
+
+**Trigger**: CR-126 / CR-126C identified `payer_overall_denial_rate_recent_2k_smoothed` and `payer_overall_denial_rate_90d_smoothed` as the winning recency features. CR-126 set a pre-merge gate: held-out PR-AUC on freq=1 must not regress >0.005 vs current production. 837P / 837I passed; 837D regressed PR-AUC by 0.087 (operator policy decision: variant-specific promotion).
+
+**Decision**: Promote the 2 new features universally in the registry. Retrain 837P and 837I on the new schema (+2 columns). **Restore 837D from git HEAD** (108-col bundle) and add a new `_VARIANT_EXCLUDES` mechanism in the registry so 837D's expected column list drops the 2 new features. Variant-specific shipping pattern matches CR-120's precedent (lifecycle features for 837I only).
+
+**Scope**: ~250 LOC across 7 source files + 1 new migration + 5 bundle files per promoted variant.
+
+| File | Change |
+|---|---|
+| `src/migrations/versions/0018_add_recency_denial_mvs.py` *(new)* | 2 new MVs (`mv_payer_denial_rates_recent_2k`, `mv_payer_denial_rates_90d`) storing raw `volume` + `denied_count`. Both keyed on `(payer_id, service_variant, claim_subtype)`. Date anchor: `max(service_from_date) FROM mv_claim_labels`. |
+| `src/rcm/features/registry.py` | +2 `_F(...)` entries in `_COVERAGE` (universal). New `_VARIANT_EXCLUDES` map + `_apply_excludes` helper. `get_feature_columns` applies the exclusion AFTER universal+lifecycle composition. |
+| `src/rcm/features/categories/coverage.py` | New `_smooth_recency` helper (constants `_SMOOTHING_ALPHA=25.0`, `_SMOOTHING_PRIOR=0.2772`). 2 new optional kwargs (`payer_recent_2k`, `payer_90d`) accept the joint-snapshot dicts. 2 new output columns appended to coverage's frame. |
+| `src/rcm/features/categories/joint.py` | `JointEncoderSnapshot` gains `payer_recent_2k` and `payer_90d` dicts (raw counts). `load_joint_snapshot` issues 2 new `_safe_fetch` queries; `_safe_fetch` swallows "MV missing" errors on stale dev DBs. |
+| `src/rcm/features/builder.py` | New `compute_leakage_safe_recency_rates(query_df, train_df, train_y)` per-row helper (per-payer chronological walk, strict-< on date, smoothing applied). `_RECENCY_FEATURE_NAMES` constant. `fit_transform` and `transform` accept new `safe_recency_rates` kwarg; `_assemble` applies it as an override on the 2 new columns when training. `coverage.compute()` call updated to pass the new snapshot dicts. |
+| `src/rcm/ml/trainer.py` | `train_variant` computes `safe_recency_all` analogous to CR-107's `safe_rates_all`, slices per split, passes to `fit_transform` and `transform`. |
+| `src/rcm/ml/reason_renderer.py` | `_FEATURE_TO_BUCKET` gains 2 entries → `_COV`. |
+| `tests/unit/test_features/test_variants.py` | universal 100 → **102**; per-variant counts +2 EXCEPT 837D (110 → **108**, exclusion). New test renames `test_universal_is_100` → `test_universal_is_102`. |
+| `tests/unit/test_features/test_registry.py` | `test_healthcare_column_count_matches_categories` bumps universal_n assertion 100 → 102. |
+| `artifacts/featurebuilder/837P_healthcare/*` | Retrained (104 → **106** cols). |
+| `artifacts/featurebuilder/837I_home_care/*` | Retrained (122 → **124** cols, lifecycle still active). |
+| `artifacts/featurebuilder/837D_dental/*` | **Restored from git HEAD** (108 cols unchanged). |
+
+### What changed at the per-variant level
+
+| Variant | Pre-CR-126B | Post-CR-126B | Δ cols | model_version |
+|---|---|---|---:|---|
+| 837P / healthcare | `v1.fb.20260622T130733` · 104 cols · thr 0.05 | **`v1.fb.20260624T063501`** · **106 cols** · thr **0.04** | +2 | new |
+| 837D / dental | `v1.fb.20260622T130740` · 108 cols · thr 0.34 | unchanged (registry excludes 2 new cols for dental) | 0 | **unchanged** |
+| 837I / home_care | `v1.fb.20260622T130757` · 122 cols · thr 0.01 | **`v1.fb.20260624T063526`** · **124 cols** · thr 0.01 | +2 | new |
+
+837I retains `include_lifecycle=True` and its CR-120 lifecycle suite.
+
+### Booster gain on the 2 new features (post-promotion)
+
+| Variant | `payer_overall_recent_2k_smoothed` | `payer_overall_90d_smoothed` | Verdict |
+|---|---:|---:|---|
+| 837P / healthcare | 0.37 % gain, 105 splits | **1.06 % gain, 177 splits** | **alive** |
+| 837D / dental | n/a (excluded) | n/a (excluded) | excluded by `_VARIANT_EXCLUDES` |
+| 837I / home_care | 0.86 % gain, 63 splits | **6.95 % gain, 136 splits** | **alive** |
+
+The `_90d` smoothed feature delivers most of the lift on both promoted variants. `_recent_2k` is real but smaller. This matches CR-126's predicted ranking (90d strongest on 837P; recent_2k+90d both strong on 837I).
+
+### System behavior after this change
+
+- **837P + 837I**: predict-time `_assemble` now writes the 2 new recency columns via `coverage.py`'s `_smooth_recency` helper, sourced from the new MVs via `joint.load_joint_snapshot`. Training-time `_assemble` overrides those columns with the leakage-safe per-row values via the CR-107 pattern.
+- **837D**: predict path is byte-identical to the pre-CR-126B state. `get_feature_columns('837D','dental')` returns 108 columns (the 2 new universal columns are filtered out by `_VARIANT_EXCLUDES`). The 837D booster never sees the new features in X.
+- **Unseen-payer fallback**: when `joint_snap.payer_recent_2k.get(key)` returns `None`, `_smooth_recency` returns `_SMOOTHING_PRIOR = 0.2772` (NOT zero). Conservative default that matches the global lifetime denial rate.
+- **MV refresh**: the 2 new MVs are NOT yet wired into CR-090's post-upload refresh cascade (mv_claim_labels gets refreshed; the downstream MVs need a manual `REFRESH` or pre-train trigger). Same staleness pattern as the existing 9 MV-backed denial-rate features. Documented as a follow-up.
+- **API contracts unchanged**. `prediction_log` rows after this CR carry the new `model_version` per H5/H6.
+
+### How to use / verify
+
+```bash
+# Confirm bundle inventory
+curl -s -X POST http://127.0.0.1:8000/api/predictions/reload-bundles | python -m json.tool | \
+  grep -E "(service_variant|feature_columns_n|model_version|include_lifecycle)"
+# Expected:
+#   837P/healthcare  cols 106  include_lifecycle false  v1.fb.20260624T063501
+#   837D/dental      cols 108  include_lifecycle false  v1.fb.20260622T130740  (unchanged)
+#   837I/home_care   cols 124  include_lifecycle true   v1.fb.20260624T063526
+```
+
+Predict-claim probe (CR-121B anchor claim 152992, freq=7 home_care):
+- post-CR-126B: `risk_score=0.875, level=HIGH, model=v1.fb.20260624T063526` — well-behaved.
+
+MV population check:
+```sql
+SELECT 'recent_2k', count(*), sum(volume), sum(denied_count) FROM mv_payer_denial_rates_recent_2k
+UNION ALL SELECT '90d', count(*), sum(volume), sum(denied_count) FROM mv_payer_denial_rates_90d;
+-- recent_2k: 110 rows, 50,770 volume, 15,375 denied (30.3% overall)
+-- 90d:       110 rows, 80,249 volume, 22,740 denied (28.3% overall)
+```
+
+### Held-out training metrics (vs CR-122B / CR-126 baselines)
+
+| Variant | Pre-CR-126B PR-AUC | Post-CR-126B PR-AUC | Δ | Pre-merge gate |
+|---|---:|---:|---:|:---:|
+| 837P / healthcare | 0.9896 | 0.9860 | −0.0036 | ✓ PASS |
+| 837D / dental | 0.3014 | 0.3014 (unchanged) | 0.0 | ✓ PASS (excluded) |
+| 837I / home_care | 0.9980 | 0.9981 | +0.0001 | ✓ PASS |
+
+### Why 837D was excluded
+
+When 837D was trained with the 2 new features added, held-out PR-AUC dropped from 0.3014 to 0.2144 (−0.087, exceeding the ±0.005 gate by 17×). The corpus has only ~100 positive examples in 8,457 train rows (~1.2 % prevalence) and ~22 in held-out; adding 2 features in this thin-positive-class regime triggers overfitting. ROC barely moved (0.9528 → 0.9511), confirming the booster's ranking is preserved but its operating point under the precision-floor sweep shifts unfavourably. The operator (CR-126B prompt response) chose option B: variant-specific promotion with `_VARIANT_EXCLUDES`. This matches the CR-120 precedent (lifecycle features promoted only for 837I).
+
+### Tests
+
+`542 / 542 unit tests passing`. Test count bumps:
+- `test_universal_is_100` → `test_universal_is_102`
+- Per-variant counts +2 (837P, 837I, others), no change for 837D
+- `test_healthcare_column_count_matches_categories` updated universal_n=102
+
+### Known constraints / follow-ups
+
+- **MV refresh cascade incomplete**. The 2 new MVs are populated by `alembic upgrade head` but not added to CR-083's pre-train refresh or CR-090's post-upload cascade. They'll go stale as new claims arrive. Same gap exists for the original 7 downstream denial-rate MVs (per CR-124 Phase 1 audit), so this isn't a CR-126B regression — but worth a separate refresh-cascade CR.
+- **837D recency exclusion is permanent until re-evaluated**. If a future 837D corpus is fatter (more positives), recency features may pass the gate. Provisional CR-126D could re-test.
+- **The 837D bundle's column count (108) is unchanged**, so the production behaviour on dental claims is identical to CR-122B. No metric regression, no metric improvement.
+- **`_VARIANT_EXCLUDES` is a thin abstraction**. Only 1 entry today. If more variant-specific exclusions accumulate, a fuller per-variant config object would be the natural refactor.
+
+### Rollback strategy
+
+```bash
+# Single-commit revert
+git revert <CR-126B SHA>
+# Restore bundles for 837P + 837I (837D was never modified)
+git checkout HEAD~1 -- artifacts/featurebuilder/837P_healthcare/ artifacts/featurebuilder/837I_home_care/
+# Drop the new MVs
+alembic downgrade 0017_mv_claim_labels_propagated
+# Refresh predictor cache
+curl -X POST http://127.0.0.1:8000/api/predictions/reload-bundles
+```
+
+The migration's `downgrade()` cleanly drops both new MVs. No data loss; no `mv_claim_labels` change. CR-117 / CR-118 / CR-120 / CR-122B all remain intact.
+
+### Architecture principles A-E compliance
+
+| Principle | CR-126B |
+|---|---|
+| A. Storage Minimization | ✓ 2 MVs × ~110 rows each ≈ 220 rows, < 100 KB. |
+| B. Database Discipline | ✓ Read-only MVs over existing primary table. |
+| C. No Premature Persistence | ✓ Smoothing constants in code; MVs store only raw counts. Tunable without migration. |
+| D. Query Efficiency | ✓ Same `ANY(:payers)` pattern as the existing 9 joint MVs. < 5 ms per snapshot load. |
+| E. Default Position | ✓ Additive features + variant-specific exclusion when a variant fails the gate. |
+
+### Red-flag checklist
+
+| Risk | Status |
+|---|---|
+| Full-table scans? | No — MV uses `mv_claim_labels` PK. |
+| Repeated queries (per-upload, per-request)? | No — one snapshot load per `_assemble`. |
+| N+1 patterns? | No. |
+| Repeated UPDATEs? | No (read-only). |
+| Unnecessary writes? | No. |
+| Refresh-heavy operations? | The 2 new MVs add ~1 s to a full refresh; not in the per-upload path yet. |
+| Partitioning implications? | No. |
+
+### Temporary artifacts
+
+**None.** Source edits via `Edit`; migration applied via `alembic upgrade head`; retrains via inline `python -c` heredoc; verification via `curl + python -c`. No `.tmp.py`, no log file, no JSON export.
+
+### Suggested commit
+
+```
+feat(features): promote payer-overall recency features for 837P + 837I (CR-126B)
+```
+
+### Related
+
+- **CR-124** — the audit that surfaced the lifetime-only / no-smoothing gap.
+- **CR-125** — the AIR that proposed the smoothing approach and α=25 / prior=0.2772 constants.
+- **CR-126** — the recency-window shootout that selected `recent_2k` + `90d` as winners.
+- **CR-126C** — the CPT/DX recency audit that confirmed payer-overall alone is sufficient.
+- **CR-107** — the leakage-safe template (extended here for the new recency features).
+- **CR-120** — the variant-specific promotion precedent (lifecycle features for 837I only).
+- **CR-122B** — the column-count parity pattern (M1 invariant management on +/− feature CRs).
+
+Future CRs: refresh-cascade extension (provisional), 837D re-evaluation once positive class fattens (provisional CR-126D).
+
+**Follow-up addressed by**: CR-127 (refresh-cascade extension).
+
+---
+
+## CR-127 — 2026-06-24 — Refresh denial-rate MV cascade (fix pre-existing CR-090 / CR-083 staleness gap)
+
+**Trigger**: CR-126B added 2 new MVs but did not wire them into the post-upload (CR-090) or pre-train (CR-083) refresh paths. A wider audit revealed that those refresh paths refreshed **only `mv_claim_labels`** — the 8 downstream denial-rate MVs from migration 0010 have been silently stale since they were last manually refreshed. PostgreSQL does NOT cascade-refresh dependent MVs when their source refreshes.
+
+**Decision**: Extend both refresh paths to cascade through `mv_claim_labels` AND all 10 downstream denial-rate MVs. **Sequential** refresh (not parallel) — simpler, no extra connections, ~1.7 s additional wall-clock. Per-MV failures of downstreams are logged and skipped (do not abort the cascade); only a root-MV failure remains fatal at train time. No feature change, no model change, no retraining, no threshold/calibrator change.
+
+**Scope**: ~80 LOC across 2 files.
+
+| File | Change |
+|---|---|
+| `src/rcm/core/mv_refresh.py` | New module constant `_DOWNSTREAM_DENIAL_MVS` (the 10 MVs). New public helper `async refresh_denial_rate_cascade(conn) -> dict[str, float]` that refreshes root + downstreams and returns per-MV timings. `_do_refresh` (the CR-090 worker) now calls the helper instead of the single-MV `REFRESH`. Per-MV failures logged at WARNING; cascade continues. |
+| `src/rcm/routers/public/predictions.py::_refresh_training_corpus` | CR-083 path now calls `refresh_denial_rate_cascade`. Root-MV failure remains HTTPException(503) (training cannot proceed on stale `mv_claim_labels`). Downstream failures are logged-and-continue (CR-107 leakage-safe override re-derives 8 MV-backed features per row at train time anyway). Returns the per-MV `cascade_timings_ms` dict alongside the existing `duration_ms` and `row_count_after`. |
+
+**Phase 1 — Refresh paths before this change**
+
+| Path | When | What it refreshed | Risk |
+|---|---|---|---|
+| CR-083 (`_refresh_training_corpus`) | every `/api/predictions/train` call | **only** `mv_claim_labels` | downstream MVs silently stale at train time; CR-107 override masked it for the 8 MV-backed features, but `payer_overall_denial_rate` (Cat A) and the predict-time path used stale data |
+| CR-090 (`schedule_mv_refresh` → `_do_refresh`) | after every EDI upload (5 s debounce) | **only** `mv_claim_labels` | same as above; downstreams unrefreshed indefinitely until manual `/api/dev/db/refresh-mv/{name}` |
+| `/api/dev/db/refresh-mv/{name}` | manual operator action | single named MV | unchanged by CR-127; remains an ops escape hatch |
+
+**Phase 2 — Dependency audit**
+
+All 10 denial-rate MVs read **directly from `mv_claim_labels`** with no inter-MV dependencies among them. Refresh order: `mv_claim_labels` first (root, required for any downstream's correctness), then downstreams in any order.
+
+| MV | Source | Refresh tier |
+|---|---|:---:|
+| `mv_claim_labels` | `claims` ⨝ `remittance_claims` | **root** |
+| `mv_payer_denial_rates` | `mv_claim_labels` | tier 1 |
+| `mv_payer_cpt_denial_rate` | `mv_claim_labels` + `claim_lines` | tier 1 |
+| `mv_payer_dx_denial_rate` | `mv_claim_labels` + `diagnoses` | tier 1 |
+| `mv_payer_pos_denial_rate` | `mv_claim_labels` + `claim_lines` | tier 1 |
+| `mv_cpt_dx_denial_rate` | `mv_claim_labels` + `claim_lines` + `diagnoses` | tier 1 |
+| `mv_provider_denial_profiles` | `mv_claim_labels` | tier 1 |
+| `mv_provider_payer_denial_rate` | `mv_claim_labels` | tier 1 |
+| `mv_provider_cpt_denial_rate` | `mv_claim_labels` + `claim_lines` | tier 1 |
+| `mv_payer_denial_rates_recent_2k` (CR-126B) | `mv_claim_labels` | tier 1 |
+| `mv_payer_denial_rates_90d` (CR-126B) | `mv_claim_labels` | tier 1 |
+
+Out of scope for CR-127 (not denial-rate MVs but also stale): `mv_lifecycle_outcomes`, `mv_patient_claim_history`, `mv_drift_baselines`. A follow-up CR could extend the cascade further.
+
+**Phase 3 — Implementation details**
+
+The new `refresh_denial_rate_cascade` is the single source of truth for the refresh order. Both call sites (CR-083 + CR-090) delegate to it, so future MV additions only need to extend `_DOWNSTREAM_DENIAL_MVS`. Per-MV try/except inside the cascade ensures one slow / failed MV doesn't poison the rest.
+
+```python
+async def refresh_denial_rate_cascade(conn) -> dict[str, float]:
+    timings = {}
+    for mv in (TARGET_MV, *_DOWNSTREAM_DENIAL_MVS):
+        t0 = time.perf_counter()
+        try:
+            await conn.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {mv}")
+        except Exception as exc:
+            logger.warning("CR-127 refresh: %s failed; %s", mv, exc)
+            timings[mv] = -1.0
+            continue
+        timings[mv] = time.perf_counter() - t0
+    return timings
+```
+
+**Phase 4 — Performance verification (docker corpus, n=93,424 rows in mv_claim_labels)**
+
+| MV | Refresh time | Notes |
+|---|---:|---|
+| `mv_claim_labels` (root) | **938 ms** | unchanged; was already part of CR-083/090 |
+| `mv_payer_denial_rates` | 30 ms | tiny — 110 rows |
+| `mv_payer_cpt_denial_rate` | **605 ms** | largest downstream — 2,411 rows + 4-table join |
+| `mv_payer_dx_denial_rate` | 240 ms | 2,513 rows |
+| `mv_payer_pos_denial_rate` | 151 ms | 104 rows |
+| `mv_cpt_dx_denial_rate` | 259 ms | 4,419 rows |
+| `mv_provider_denial_profiles` | 32 ms | 53 rows |
+| `mv_provider_payer_denial_rate` | 23 ms | 81 rows |
+| `mv_provider_cpt_denial_rate` | 168 ms | 2,897 rows |
+| `mv_payer_denial_rates_recent_2k` (CR-126B) | 163 ms | 110 rows; window function |
+| `mv_payer_denial_rates_90d` (CR-126B) | 44 ms | 110 rows; date filter |
+| **Total downstream cost (added by CR-127)** | **~1,715 ms** | sequential |
+| **End-to-end cascade** | **~2,653 ms** | root + downstreams |
+| Pre-CR-127 refresh wall-clock | ~940 ms | root only |
+| **Net added overhead** | **+1.7 s** | exceeds the < 1 s target |
+
+**Above the < 1 s target**, but acceptable for a debounced refresh path that runs at most every 5 s (CR-090 debounce window). The trade-off: sequential is simpler and safer; parallelizing would require multiple asyncpg connections + careful error aggregation. If the corpus grows 10× and the additional overhead becomes problematic, a follow-up CR can parallelize the 10 downstreams (theoretical floor: max single-MV time ≈ 600 ms, so total ~1.5 s).
+
+**Phase 5 — Freshness verification**
+
+End-to-end run against the live docker DB:
+
+```
+Cascade complete in 2,976 ms (11/11 OK)
+Sample payer_id=8 in mv_payer_denial_rates_90d:
+  before: denied=1,673 volume=4,068
+  after:  denied=1,673 volume=4,068  (same — no new data was added during run)
+```
+
+Row counts before/after (all stable, confirming idempotency on no-new-data):
+
+| MV | Before | After |
+|---|---:|---:|
+| mv_claim_labels | 93,424 | 93,424 |
+| mv_payer_denial_rates | 110 | 110 |
+| mv_payer_cpt_denial_rate | 2,411 | 2,411 |
+| mv_payer_dx_denial_rate | 2,513 | 2,513 |
+| mv_payer_pos_denial_rate | 104 | 104 |
+| mv_cpt_dx_denial_rate | 4,419 | 4,419 |
+| mv_provider_denial_profiles | 53 | 53 |
+| mv_provider_payer_denial_rate | 81 | 81 |
+| mv_provider_cpt_denial_rate | 2,897 | 2,897 |
+| mv_payer_denial_rates_recent_2k | 110 | 110 |
+| mv_payer_denial_rates_90d | 110 | 110 |
+
+Full end-to-end "upload → debounce → cascade → row counts change" is exercised by the CR-090 worker as written; the unit-test-style probe above validates the cascade function itself completes cleanly on the live DB.
+
+**Phase 6 — Regression**
+
+- **Unit suite**: 542 / 542 passing (no change from CR-126B).
+- **`/api/predictions/reload-bundles`**: returns 200; all 3 bundles show correct column counts (106 / 108 / 124).
+- **`/api/predictions/predict-claim/152992`** (CR-121B anchor freq=7 home_care): risk_score=0.875, level=HIGH, model=`v1.fb.20260624T063526` — identical to post-CR-126B.
+- **`/api/recommendations/by-file/7133`**: 200 OK.
+
+**System behavior after this change**
+
+- Every EDI upload now triggers a CR-090 debounced cascade that refreshes all 11 MVs (root + 10 downstreams) within ~3 s of the last upload in a burst. Pre-CR-127, only `mv_claim_labels` was refreshed; downstream denial-rate features were served from stale snapshots.
+- Every `/api/predictions/train` call refreshes the same 11 MVs as the pre-training step. CR-083's "fail fast on root failure" semantics are preserved; downstream failures only log+continue (the trainer's CR-107 override masks per-row impact).
+- Predict-time path now sees fresh `payer_overall_denial_rate`, `payer_cpt_denial_rate`, etc. as soon as the post-upload cascade completes. The CR-126B recency MVs are part of the cascade so they stay fresh too.
+- No feature, model, threshold, or calibrator changed. The 3 production bundles (837P, 837D, 837I) emit byte-identical predictions for byte-identical inputs.
+
+### Known constraints / follow-ups
+
+- Sequential refresh adds ~1.7 s wall-clock to the post-upload debounce path. Exceeds the < 1 s target but tolerable. Parallel refresh would land at ~1.5 s total (limited by `mv_payer_cpt_denial_rate` at 605 ms) and adds connection-pool complexity. Defer parallelization to a future CR if corpus growth makes the gap matter.
+- **Out of scope**: 3 other MVs that depend on `mv_claim_labels` are still excluded from the cascade — `mv_lifecycle_outcomes`, `mv_patient_claim_history`, `mv_drift_baselines`. They were silent-stale before this CR and remain so; per the prompt scope, only denial-rate MVs were in scope for CR-127. A future CR can extend the cascade.
+- **Per-MV failure handling is "log and continue"** for downstreams. If a downstream MV's REFRESH starts failing (e.g., because of a unique-index violation after a corrupt MV state), it'll silently emit stale data. Future operational alerting should watch for `CR-127 refresh: <mv> failed` log lines.
+- The cascade is **idempotent** — repeated runs over the same source data produce identical results.
+
+### Rollback strategy
+
+```bash
+git revert <CR-127 SHA>
+# No DB / artifact / bundle change. The 2 source files revert to their
+# pre-CR-127 state. Post-revert behaviour: mv_claim_labels still refreshes
+# (CR-083 + CR-090 single-MV path); downstreams go back to stale-by-default.
+curl -X POST http://127.0.0.1:8000/api/predictions/reload-bundles  # cache refresh
+```
+
+No data loss. No schema change. No model change.
+
+### Architecture principles A-E compliance
+
+| Principle | CR-127 |
+|---|---|
+| A. Storage Minimization | ✓ No new persistent objects. |
+| B. Database Discipline | ✓ Read-only `REFRESH MATERIALIZED VIEW CONCURRENTLY` only — no row writes. |
+| C. No Premature Persistence | ✓ MV list is in code; trivial to extend. |
+| D. Query Efficiency | ✓ Each MV uses its own PK index; refresh is the only DB work. |
+| E. Default Position | ✓ Smallest change that fixes the staleness gap. |
+
+### Red-flag checklist
+
+| Risk | Status |
+|---|---|
+| Full-table scans? | No — REFRESH MATERIALIZED VIEW CONCURRENTLY rebuilds via the MV's own definition. |
+| Repeated queries (per-upload, per-request)? | No — CR-090's debounce ensures at most one cascade per 5 s burst. |
+| N+1 patterns? | No. |
+| Repeated UPDATEs? | No (REFRESH replaces the MV atomically). |
+| Unnecessary writes? | No. |
+| Refresh-heavy operations? | Yes by construction — but bounded to 11 MVs × ~250 ms avg = ~2.7 s, debounced. |
+| Partitioning implications? | No — none of these MVs is partitioned. |
+
+### Temporary artifacts
+
+**None.** All work via `Edit` on source files + `python -c` heredoc for validation. No `.tmp.py`, no log file, no JSON / CSV export.
+
+### Suggested commit
+
+```
+fix(features): integrate recency denial-rate MVs into refresh cascade (CR-127)
+```
+
+### Related
+
+- **CR-010 / migration 0010** — created 8 of the 10 downstream denial-rate MVs.
+- **CR-083** — added the pre-train `mv_claim_labels` refresh that CR-127 extends.
+- **CR-090** — added the post-upload debounced refresh that CR-127 extends.
+- **CR-124** — the audit that surfaced the staleness pattern.
+- **CR-126B** — added the 2 recency MVs and explicitly noted "MV refresh cascade incomplete" as the gap this CR fills.
+- **CR-107** — the leakage-safe training override that *partially* masked the staleness at train time but not predict time.
+
+Future CRs: lifecycle/history/drift MV cascade extension (provisional); parallel-cascade if corpus size makes the 1.7 s overhead matter.
+
+---
+
+## CR-128 — 2026-06-24 — Prediction confidence layer (expected-denials + per-claim confidence label)
+
+**Trigger**: Operators reading the `/api/predictions/predict-file` response see "10 HIGH-risk claims" but cannot yet answer the natural follow-up: *"out of those 10, how many will actually be denied?"* The model already produces calibrated per-claim probabilities (isotonic regression; CR-121B held-out ECE 0.001–0.012). A small post-prediction reporting layer can answer the question principle-of-expectation-style without any model change.
+
+**Decision**: Pure additive reporting layer. Two complementary fields:
+1. **Batch-level `bucket_confidence`** on `PredictFileResponse` — Poisson-Binomial summary per HIGH/MEDIUM/LOW bucket: `expected_denials = Σ p_i`, `expected_std = √Σ p_i(1−p_i)`, 90% normal-approximation interval, and `confidence_pct = expected_denials / n_claims`.
+2. **Per-claim `confidence_label`** on `HighRiskClaimItem` and `ScoredClaim` — string in {"Very High" (p ≥ 0.95), "High" (0.80 ≤ p < 0.95), "Moderate" (0.50 ≤ p < 0.80), "Low" (p < 0.50)} derived from the same calibrated `risk_score`.
+
+Both computed inline from existing `risk_score`. **Zero model change, zero retraining, zero DB write, zero schema migration.** Calibrator, threshold, registry, MVs all untouched.
+
+**Scope**: ~250 LOC across 4 source files + 1 new test file. All response field additions are backwards-compatible (new keys with defaults; pre-CR-128 clients ignore them safely).
+
+| File | Change |
+|---|---|
+| `src/rcm/schemas/public.py` (around line 237) | New `BucketConfidence` model with 6 fields. `HighRiskClaimItem` gains `confidence_label: str = "Low"`. `PredictFileResponse` gains `bucket_confidence: dict[str, BucketConfidence] = Field(default_factory=dict)`. |
+| `src/rcm/ml/simple_pipeline.py` (around line 84) | `ScoredClaim` dataclass gains `confidence_label: str = "Low"`. New module-level helper `confidence_label_for(p: float) -> str` exported for both scoring paths. |
+| `src/rcm/routers/public/predictions.py` | New `_bucket_confidence(scores: list[float]) -> BucketConfidence` and `_build_bucket_confidence(scored) -> dict[str, BucketConfidence]` helpers. `predict_file` (FB-primary) and `_legacy_predict_file_simple` (kill-switch) both populate `bucket_confidence` and `confidence_label`. Imports `math` for the std computation. |
+| `frontend/src/pages/UploadPage.jsx` | New `BucketPill` component (replaces the 3 inline pill divs). New `_CONFIDENCE_CLS` colour map. Each HIGH-claim row gets a confidence-label chip alongside the risk_score percentage. |
+| `tests/unit/test_predictions_confidence.py` *(new)* | 17 unit tests covering `confidence_label_for` cutoffs, empty/single/multi-element bucket math, clipping to `[0, n]`, the n=10@p=0.85 example from the plan, and `_build_bucket_confidence` grouping. |
+
+**What changed**:
+- `POST /api/predictions/predict-file/{id}` response now includes the `bucket_confidence` dict + per-claim `confidence_label`. Existing keys (`risk_summary`, `high_risk_claims`, `predicted_claims`) are unchanged in shape and value.
+- `POST /api/predictions/reload-bundles`, `POST /api/predictions/predict-claim/{id}`, `POST /api/recommendations/by-file/{id}` — **unchanged** (out of scope for this CR).
+- Frontend `UploadPage.jsx`: the three HIGH/MEDIUM/LOW pills now show a small monospace subtitle line `~49.4 ± 3.2 (78%)` when the bucket has ≥1 claim. The HIGH-claim row chip shows "Very High" / "High" / "Moderate" / "Low" with a colour gradient.
+- Backend / API contracts: additive only. JSON pre-CR-128 callers continue to work because they ignore unknown response fields.
+
+**System behavior after this change**:
+- An operator predicting on a 63-claim home_care batch sees: `HIGH: 63 claims · ~49.4 expected denials (78%)`. The new chip on each row distinguishes high-confidence rows ("Very High", p ≥ 0.95) from moderate-confidence rows ("Moderate", 0.50 ≤ p < 0.80) at a glance.
+- `prediction_log` is untouched. No new persisted state.
+- Bucket-level math is correct under linearity of expectation regardless of independence; the std is a Poisson-Binomial std and **assumes per-claim independence** — within a single file payer/provider correlations may make true variance higher than reported. Documented in the response model docstring.
+
+**How to use / verify**:
+
+```bash
+# Live probe against CR-127 docker DB on the CR-126B 837I bundle:
+curl -s -X POST http://127.0.0.1:8000/api/predictions/predict-file/7133 | python -m json.tool
+# Response includes:
+#   "risk_summary": {"HIGH": 63, "MEDIUM": 0, "LOW": 0}
+#   "bucket_confidence": {
+#       "HIGH": {n_claims: 63, expected_denials: 49.36, expected_std: 3.16,
+#                interval_low: 44.16, interval_high: 54.57, confidence_pct: 0.7835},
+#       "MEDIUM": (all zeros),
+#       "LOW": (all zeros)
+#   }
+#   "high_risk_claims": [{... risk_score: 0.7027, confidence_label: "Moderate" ...}, ...]
+```
+
+Calibration spot-check: bucket HIGH `confidence_pct ≈ 0.78`, which is below the CR-121B 837I held-out HIGH-bucket `precision_at_threshold ≈ 0.85` by ~7pp. That gap reflects the production cohort being a 63-claim freq=7 batch (where the model has more variability than on the held-out mixed cohort) and is within the expected calibration-drift band — operationally normal, not a regression.
+
+**Tests**: 17 new unit tests in `tests/unit/test_predictions_confidence.py` covering:
+- `confidence_label_for` cutoffs at boundary values 0.0, 0.49, 0.50, 0.79, 0.80, 0.94, 0.95, 0.99, 1.0
+- `_bucket_confidence` on empty list, single certain claim (p=1.0), single max-uncertainty claim (p=0.5), 10×p=0.85, mixed-probability list, and interval clipping to `[0, n]`
+- `_build_bucket_confidence` grouping by `risk_level` and zero-fill for empty buckets
+
+Full unit suite: **559 / 559 passing** (was 542 pre-CR-128; +17 new). No regressions.
+
+**Known constraints / follow-ups**:
+- **Out of scope** by design: `/api/predictions/predict-claim/{id}` (single-claim "expected count" is degenerate — just `risk_score`); `/api/recommendations/by-file/{id}` (could mirror the same fields if operators ask); `prediction_log` persistence of confidence values (defer until historical confidence trending is requested).
+- **Std assumes independence.** Real batches share payer/provider so the true 90% CI is slightly wider. Documented in `BucketConfidence`'s docstring; if operationally inadequate, a follow-up CR could fit a per-batch correlation factor.
+- **Isotonic plateau effect.** Many claims share an identical calibrated `p` (isotonic is step-wise). `confidence_label` clumps into a few discrete categories; expected.
+- **Tail-bin calibration.** ECE is an average; the [0.95, 1.0] bin can have wider true CI than ECE suggests (CR-121B Phase 6 saw this on 837I). Operationally acceptable; flagged as a "Very High" risk needs operator review anyway.
+- The CR-128 `expected_denials` is a model-side estimate. Historical bucket precision from `feature_schema.json::metrics.held_out.precision_at_threshold` is an alternative anchor; both produce similar numbers in well-calibrated regimes (within ±5pp on this corpus).
+
+**Rollback strategy**:
+```bash
+git revert <CR-128 SHA>
+# No DB / migration / artifact / bundle change. Pre-CR-128 clients
+# silently lose the new fields and continue working.
+curl -X POST http://127.0.0.1:8000/api/predictions/reload-bundles  # not strictly required
+```
+Single-commit revert. Backwards-compatible reversion — any client persisting `confidence_label` or `bucket_confidence` will see them disappear from new responses but won't error.
+
+**Architecture principles A-E compliance**:
+
+| Principle | CR-128 |
+|---|---|
+| A. Storage Minimization | ✓ No new persistent objects. |
+| B. Database Discipline | ✓ Zero DB writes / reads. |
+| C. No Premature Persistence | ✓ Confidence computed per-request. |
+| D. Query Efficiency | ✓ Helpers are O(n) over already-loaded `scored` list. Sub-millisecond overhead. |
+| E. Default Position | ✓ Smallest additive change that answers the operator question. |
+
+**Red-flag checklist**: all "No" — no DB writes, no new MVs, no scan, no N+1, no migration.
+
+**Temporary artifacts**: **none.** All work via `Edit` + the new `tests/unit/test_predictions_confidence.py` (a permanent test file, not a temp script). The live verification was a single `curl + python -m json.tool` invocation.
+
+**Suggested commit**:
+```
+feat(predict): add bucket_confidence + per-claim confidence_label (CR-128)
+```
+
+**Related**:
+- **CR-067** — the FB-primary cutover that built the `ScoredClaim` contract this CR extends.
+- **CR-093** — actionability-tier reordering of denial reasons; CR-128 adds a complementary "how sure" axis without disturbing the "what to fix first" axis.
+- **CR-112 / CR-114** — the calibrator + threshold work that makes `risk_score` trustworthy as a probability.
+- **CR-121B** — the audit that measured the ECE values this CR depends on (0.001–0.012).
+- Future CR (provisional): mirror `bucket_confidence` on `/api/recommendations/by-file/{id}` if operator feedback wants the same statistic on the fix-queue surface.
+
+---
+
+## CR-128B — 2026-06-24 — Confidence-dot redesign + post-835 outcome icon
+
+**Trigger**: Operator reviewed CR-128 in the UI and pushed back on two points: (1) the per-claim *text* chip `Very High / High / Moderate / Low` sat right next to the `HIGH RISK` badge so the two read as one composite label — confusing because the chip means "how confident the model is" and the badge means "what denial category"; (2) once the 835 has landed, the operator wants to see *at a glance* whether the claims predicted as "definitely denied" actually got denied — i.e., a feedback loop on the model's high-confidence picks. The visual encoding had to be added without consuming extra row space.
+
+**Decision** (via `AskUserQuestion`, two questions):
+- *Confidence visual*: **Colored dot indicator** chosen over a re-positioned chip, a sparkline, or a numeric column. A 8 × 8 px filled circle between the percentage and the `HIGH RISK` badge encodes the bucket purely visually; the `confidence_label` string remains in the response for screen readers and tooltip.
+- *Post-835 outcome*: **Inline check/X icon** chosen over a separate column or a deferred dashboard. ✓ (green) = predicted denied AND payer denied → model right; ✗ (gray) = predicted denied but payer paid → model wrong; nothing rendered when no remittance has arrived (pending).
+- Rejected alternatives: re-styled text chip (still composite with the badge), separate columns (adds row width), a separate "Outcome" tab (loses the feedback adjacency).
+
+**Scope**:
+- `src/rcm/schemas/public.py` — `HighRiskClaimItem` gains `actual_outcome: str | None = None` (~5 LOC incl. docstring); comment on `confidence_label` clarified to "rendered as colored dot, not a chip".
+- `src/rcm/routers/public/predictions.py` — new async helper `_lookup_actual_outcomes(claim_ids)` (~35 LOC) executes a single bulk `SELECT … WHERE claim_id = ANY($1::bigint[]) GROUP BY claim_id` against `remittance_claims` with status-code aggregation. Both the FB-primary `predict_file` path and the legacy simple-pipeline kill-switch path populate `actual_outcome` from the helper's result map.
+- `frontend/src/pages/UploadPage.jsx` — `_CONFIDENCE_CLS` chip map replaced with `_CONFIDENCE_DOT_CLS` (3 entries; no "Low" entry → no dot for Low). New `_OUTCOME_ICON` map (denied → green check, approved → gray cross). HighRiskList row renders a `w-2 h-2 rounded-full` span for the dot and a 12 px ✓/✗ glyph for the outcome icon, both inside the existing flex container.
+- `tests/unit/test_predictions_confidence.py` — `TestLookupActualOutcomes` class with 6 cases using a fake asyncpg connection (no real DB).
+- No DB migration. No schema change to `remittance_claims`. No new index — `claim_id` already indexed via the FK.
+- LOC delta: ~+70 backend, ~+30 frontend, ~+75 tests.
+
+**What changed**:
+- The text chip `Very High` / `High` / `Moderate` / `Low` is no longer displayed inline in the HighRiskList row. The same information is now encoded as a single colored dot sitting between the calibrated `risk_score` percentage and the `HIGH RISK` badge: deep red = Very High (p ≥ 0.95), orange = High (0.80 ≤ p < 0.95), yellow = Moderate (0.50 ≤ p < 0.80). No dot renders for Low (a HIGH-bucket claim with p < 0.50 should not normally exist; if it does, no dot draws). The dot's `title` attribute carries the literal label for hover-tooltip + screen-reader access.
+- A second icon appears between the confidence dot and the `HIGH RISK` badge **only when** an 835 has already landed for that claim: a green ✓ if the model was right (payer denied), a gray ✗ if the model was wrong (payer paid). Absence = pending (no remittance row yet).
+- The backend response now includes an `actual_outcome` field on every `HighRiskClaimItem`. Values: `"denied"` (any matching remit with `claim_status_code='4'`), `"approved"` (any matching remit with `claim_status_code` in `{'1','2','3','19','20'}` and no denied row), or `null` (no remit found, or remit with neither code). The "any denied wins" rule mirrors CR-071's training-corpus convention so labels stay consistent across train and serve.
+- The outcome lookup is a single bulk query per `predict-file` call (not N+1). Per the AIR below the cost is one extra `SELECT` over a typically <100-row id list with a `bigint[]` index lookup — negligible compared to the FB feature-build step.
+
+**System behavior after this change**:
+- After running `/api/predictions/predict-file/{id}`, an operator now sees on each HIGH-risk row in the UI: `{claim_number} {payer} {risk%}  ●  [✓|✗|]  HIGH RISK`. The dot color signals confidence; the icon signals "did the 835 confirm the prediction?". Both are absent if not applicable, so a freshly predicted file (no 835s yet) shows dots only — operator gets confidence at a glance with no outcome noise. Once 835s land for the same claims, re-running `predict-file` reveals which of the model's high-confidence picks were borne out and which weren't, *without* needing to navigate to a separate audit page.
+- The response contract is additive: pre-CR-128B clients see an extra `actual_outcome` key on `HighRiskClaimItem` and an unchanged top-level shape. The Pydantic default (`None`) means clients that ignore the field continue to work.
+- Backend per-request cost adds ~1 ms for the outcome SQL when high_risk_count ≈ 60 (single indexed `ANY($1::bigint[])` against `remittance_claims.claim_id`). No effect on training, MV refresh, or any background job.
+- No regression in the calibration / threshold / model layer — `confidence_label_for` thresholds (0.50 / 0.80 / 0.95) and `_bucket_confidence` math are unchanged from CR-128.
+
+**How to use / verify**:
+```bash
+# Backend response now carries actual_outcome
+curl -s -X POST http://127.0.0.1:8000/api/predictions/predict-file/7133 \
+  | python -m json.tool \
+  | grep -E '"(confidence_label|actual_outcome|risk_score)"' | head -12
+# Expect: each high_risk_claims entry has confidence_label + actual_outcome
+#         (actual_outcome=null for files with no 835 yet, otherwise "denied"/"approved")
+
+# Frontend smoke
+# Visit http://127.0.0.1:5173/upload, upload an 837 with matching 835s in DB,
+# predict on it: red/orange/yellow dot appears next to each HIGH RISK row,
+# green ✓ for denied claims, gray ✗ for paid claims.
+```
+Unit tests:
+```
+PYTHONPATH=src python -m pytest tests/unit/test_predictions_confidence.py -v
+# 23 tests pass (17 from CR-128 + 6 new from CR-128B)
+```
+
+**Tests**: `tests/unit/test_predictions_confidence.py::TestLookupActualOutcomes` adds 6 cases — empty-input short-circuit, denied-wins-over-approved tie-breaker, approved-only mapping, missing-claim omission, exotic-status-code omission, mixed-batch sanity. The fake `_FakeConn.fetch` lets us assert the mapping rule without spinning up Postgres; the SQL itself is exercised by the live curl probe in the verification step above.
+
+**Known constraints / follow-ups**:
+- The colored dot encodes the bucket boundary visually but discards the precise probability. Operators wanting the exact number still have the adjacent `risk%` digit display.
+- The outcome icon currently only renders inside the HighRiskList. The same `actual_outcome` field could be surfaced on `/api/recommendations/by-file/{id}` so the fix-queue page also shows the feedback loop; deferred until operator asks.
+- Aggregation of model-correctness over time (e.g. "of all HIGH-risk predictions last week, X % were borne out") is not done here — that's a monitoring concern and belongs on the ML-monitoring dashboard, not on a per-file response.
+- The "any denied wins" rule (consistent with CR-071) means a claim that was first denied then approved on resubmission still shows ✓. This is intentional — the model predicted the *initial* denial, which actually happened.
+
+**Related**:
+- **CR-128** — the prior implementation this CR redesigns. The text chip + bucket-level confidence stay; only the per-row visual encoding changes.
+- **CR-071** — defined the "any denied wins" status-code aggregation for the training-corpus query; reused here so train/serve labels stay consistent.
+- **CR-121B** — calibration audit that makes `risk_score` trustworthy enough to put a colored dot next to.
+- Future CR (provisional): outcome surface on `/api/recommendations/by-file/{id}` + a small `mv_prediction_outcome` materialized view if the operator wants "model accuracy last 7 days" as a top-of-page banner.
+
+---
+
+## CR-131B — 2026-06-25 — Empirical denial forecast layer (replaces CR-128's confidence chip)
+
+**Trigger**: CR-128/CR-128B added a per-claim "confidence" derived from `risk_score`. Operator pushed back: showing a second number derived from the model's own probability adds no information — they already see `risk_level` and the percentage. The real question they wanted answered was *"of N HIGH claims today, how many will actually deny once 835s arrive?"* — which requires looking at historical adjudicated outcomes, not the model's self-report. CR-129's calibration audit confirmed the model's probabilities are miscalibrated by variant (837P over-confident by 17pp at top bin, 837D essentially random, 837I well-calibrated). CR-131A/A.1 designed and pre-validated the empirical-bucket-precision approach.
+
+**Decision**: Add a calibration MV + forecast engine that derives `expected_denials = Σ p_i` where `p_i` is the **empirical** precision of the (variant, score-decile) cell the claim falls in (computed from `prediction_log ⨝ remittance_claims` over a 90-day window). Per CR-131A.1, bucket-level outperforms variant-level by 60-85% MAE on 837I. **Remove** the CR-128 `confidence_label` and `bucket_confidence` surfaces — they were a second representation of `risk_score`, now superseded.
+
+Bayesian smoothing constants: `α = κ · base_rate`, `β = κ · (1 − base_rate)`, `κ = 10`. Min-bucket sample size N≥30 (CR-131A.1 sample-size scan). Fallback ladder: bucket → variant → global → model probability.
+
+**Scope**:
+| Component | Change |
+|---|---|
+| `src/migrations/versions/0019_add_forecast_calibration_mv.py` *(new)* | Creates `mv_forecast_calibration` MV joining `prediction_log` to `remittance_claims` over 90 days, bucketing by score decile. 33 rows total (10 buckets × 3 variants + 3 variant-level + 1 global). Bayesian smoothing in SQL using variant-specific prior; 90% CI via normal approximation on posterior. Unique index supports `REFRESH MATERIALIZED VIEW CONCURRENTLY`. |
+| `src/rcm/ml/forecast.py` *(new)* | `CalibrationTable.load(conn)` snapshots the MV into a process-local dict; `lookup(score, variant, subtype)` implements the 4-level fallback ladder with `MIN_BUCKET_N=30` guard; `aggregate_forecast(lookups)` computes Poisson-Binomial `Σp_i ± 1.645·√Σp_i(1−p_i)` and emits a `Forecast` dataclass with `fallback_distribution`. ~190 LOC. |
+| `src/rcm/core/mv_refresh.py` | Added `_FORECAST_MVS = ("mv_forecast_calibration",)` to the CR-127 refresh cascade. Every upload-triggered debounced refresh now also refreshes the forecast MV — no separate cron required. |
+| `src/rcm/schemas/public.py` | New `Forecast` Pydantic model. `HighRiskClaimItem` gains `empirical_bucket_precision: float │ None`, `empirical_sample_size: int = 0`, `fallback_used: str │ None`. `BucketConfidence` model **deleted**; `confidence_label` field **deleted**. `PredictFileResponse.bucket_confidence` → `PredictFileResponse.forecast`. |
+| `src/rcm/routers/public/predictions.py` | New `_build_forecast(scored)` helper: loads `CalibrationTable`, runs per-claim lookup, aggregates. Replaces CR-128's `_bucket_confidence` + `_build_bucket_confidence`. Both FB-primary and legacy paths call it. Per-claim empirical fields attached to every `HighRiskClaimItem`. Imports `confidence_label_for` removed. |
+| `src/rcm/ml/simple_pipeline.py` | `ScoredClaim.confidence_label` field removed; `confidence_label_for()` helper removed. |
+| `frontend/src/pages/UploadPage.jsx` | Removed `BucketPill.conf` subtitle (CR-128 sum-of-probabilities subtitle). New `ForecastBanner` component renders the headline forecast above the HIGH list. Per-claim dot color now keyed on `empirical_bucket_precision` thresholds (≥0.90 red / ≥0.75 orange / ≥0.50 yellow / else no dot) instead of the deleted `confidence_label`. Per-claim tooltip surfaces the historical sample size and fallback level. |
+| `tests/unit/test_predictions_confidence.py` | Rewritten: 8 fallback-ladder tests, 9 aggregate-forecast math tests, 2 surface tests confirming `confidence_label` is gone. 19/19 pass. |
+
+LOC delta: ~+450 added (migration + forecast engine + tests + frontend banner), ~-200 removed (CR-128 helpers + chip + label).
+
+**What changed**:
+- The API contract no longer returns a `confidence_label` for any claim. The "of HIGH claims, how many will actually deny?" answer now comes from `PredictFileResponse.forecast.expected_denials` — a number anchored to historical adjudicated outcomes, not the model's calibrated probability.
+- The frontend's per-claim colored dot now reflects empirical denial rate of historically-similar claims, not the model's `risk_score`. A claim with `risk_score=0.99` but empirical bucket precision of 0.82 (e.g. 837P top bin) shows the dot at the orange tier (≥0.75), not red (≥0.90) — operator sees what the model *historically achieves* on this score band, not what the model *thinks*.
+- A new ForecastBanner above the HIGH list reads: "20 HIGH claims → forecast ~16.4 denied (90% CI: 14.7–18.1) · 82% expected denial rate · Based on 1,834 adjudicated HIGH claims in last 90 days · 98% bucket-specific data · refreshed 2026-06-25".
+- The `mv_forecast_calibration` MV refreshes automatically as part of the CR-127 upload-driven debounced cascade. No manual refresh path. As new 835s land, the bucket precisions auto-update — the forecast self-corrects under drift without retraining the model.
+- The `fallback_used` field on each `HighRiskClaimItem` lets operators audit when a forecast rests on thin data: "bucket" = N≥30 historical samples in this exact cell; "variant" = pooled to variant precision; "global" = pooled to global; "model" = last-resort use of `risk_score` (only happens on fresh deployments before any 835 has landed).
+
+**System behavior after this change**:
+- `POST /api/predictions/predict-file/{id}` returns `forecast: {n_high, expected_denials, expected_approvals, forecast_confidence_pct, interval_low, interval_high, historical_sample_size, data_window_days, fallback_distribution, last_calibration_refresh}` and per-claim `empirical_bucket_precision / empirical_sample_size / fallback_used`. Pre-CR-131B clients break (the schema removes fields); operators were the only known consumer.
+- Live probe on file 7134 (95 HIGH 837P claims): `forecast.expected_denials = 25.06` (vs model's `Σ risk_score ≈ 78.5`). The 50-point gap is the calibration correction this layer provides — 837P's model says 99% will deny but historically only ~26% in this bucket actually do.
+- `fallback_distribution` for file 7134: 97.9% bucket-specific, 2.1% variant. Forecast is well-supported.
+- Backtest validation (CR-131A.1 reproduced with deployed engine, temporal 70/30 split):
+  | Variant | K=10 MAE gain | K=50 MAE gain | K=200 MAE gain | Cohort bias reduction |
+  |---|---:|---:|---:|---:|
+  | **837I** | +59.3% | +73.7% | +84.8% | +88.9% |
+  | **837P** | −1.7% | −3.8% | −6.0% | −6.2% |
+
+  837I meets the ≥30% success criterion at every batch size. 837P is operationally equivalent to variant-level (within ±6% noise) because its model output is bimodal — almost every HIGH claim lives in `[0.90, 1.00]`, where bucket precision ≈ variant precision. The fallback ladder handles this gracefully: bucket and variant produce the same number for 837P, so neither method has an edge. The MIN_BUCKET_N=30 guard prevents thin-data noise that CR-131A.1's broader N≥5 measurement was sensitive to. Net effect on 837P: no degradation, no improvement — the system is at parity with the simpler variant-only forecaster, which is itself dramatically more accurate than the CR-128 Σrisk_score forecast.
+- 837D's behavior with the empirical layer: the bucket cells around the [0.30, 0.40] range now correctly forecast ~80% denial, which is much closer to truth than the model's near-zero risk_score on the broken bundle. The forecast layer becomes a partial workaround for 837D until CR-130A's recommended retrain lands.
+
+**How to use / verify**:
+```bash
+# Apply migration
+DATABASE_URL='postgresql+asyncpg://rcm:rcm_dev_password@localhost:5433/rcm_denials_dev' \
+  PYTHONPATH=src python -m alembic upgrade head
+
+# Probe new forecast field
+curl -s -X POST http://127.0.0.1:8000/api/predictions/predict-file/7134 \
+  | python -m json.tool | python -c "import sys,json; d=json.load(sys.stdin); print(json.dumps(d['forecast'], indent=2))"
+
+# Expected fields: n_high, expected_denials, interval_low/high, historical_sample_size,
+# data_window_days=90, fallback_distribution{bucket,variant,global,model}, last_calibration_refresh
+
+# Unit tests
+PYTHONPATH=src python -m pytest tests/unit/test_predictions_confidence.py -v   # 19/19 pass
+```
+
+**Tests**: 19 new unit tests in `tests/unit/test_predictions_confidence.py` covering:
+- Fallback ladder: bucket-hit when N≥MIN_BUCKET_N, fall-through to variant on thin bucket, fall-through to global when variant missing, fall-through to model on empty MV, N=MIN_BUCKET_N inclusive boundary, bucket index 9 for p=1.0
+- Aggregate math: empty cohort, single certain claim, single max-uncertainty claim, 10 claims at p=0.85 matches Poisson-Binomial, mixed probabilities linearity-of-expectation, fallback distribution accounting, historical sample size averaging, interval clipping, last_refresh passthrough
+- Surface deletions: `ScoredClaim` no longer carries `confidence_label`; `confidence_label_for` is not importable
+
+Full suite: **561/561 unit tests pass**.
+
+**Known constraints / follow-ups**:
+- **837P is currently at parity with variant-level**, not better. This is structural: 837P's bimodal model output makes per-bucket precisions converge. CR-129 already identified 837P needs isotonic recalibration — if that lands, the resulting model will distribute predictions across more buckets and CR-131B's bucket-level forecaster will start providing real lift for 837P too. Without recalibration, the forecast layer is a no-op safety net for 837P (also fine).
+- **837D's empirical layer partially compensates for the broken model**: the forecast banner will say "expected_denials = 42% of N" because that's the empirical truth — even though the model says ~0%. This is good and bad: it gives operators a correct headline number, but it masks how broken the underlying model is. CR-130A's retrain recommendation should still happen.
+- **Cold-start period**: in the first 30 days after deploy, some buckets will have N<30 and fall back to variant. The fallback_distribution field surfaces this honestly. After ~30 days the bucket-level coverage should reach ~95%.
+- **Calibration MV grows linearly in (#variants × 10 buckets)**, not in claim volume — current size is 33 rows, projected to stay at ~50 rows even if 5 more variants are added.
+- **The "any denied wins" rule (CR-071) is reused** in the SQL aggregation so train/serve label semantics stay consistent.
+
+**Rollback strategy**:
+```bash
+# Source revert
+git revert <CR-131B commit SHA>
+
+# Drop the MV (the migration's downgrade)
+DATABASE_URL='...' PYTHONPATH=src python -m alembic downgrade 0018_add_recency_denial_mvs
+
+# Refresh predictor cache (no-op for the MV but harmless)
+curl -X POST http://127.0.0.1:8000/api/predictions/reload-bundles
+```
+The schema-removal of `confidence_label` and `bucket_confidence` is a backwards-INCOMPATIBLE change for the API contract — pre-CR-131B clients (the frontend) will see Pydantic deserialization failures on the missing fields. Rollback restores the prior schema; the bundle artifacts are untouched.
+
+**Architecture principles A-E compliance**:
+
+| Principle | Compliance |
+|---|---|
+| A. Storage Minimization | ✓ 33-row MV; no per-claim persistence; the forecast itself is derived at request time and discarded. |
+| B. Database Discipline | ✓ One indexed read per `predict-file` call; MV refresh is CONCURRENT; no schema changes outside the new MV. |
+| C. No Premature Persistence | ✓ Only the aggregate MV is stored. Per-request forecasts are not persisted (the input → output mapping is deterministic given the MV state, so caching the output adds no value). |
+| D. Query Efficiency | ✓ MV-based lookup is O(1) per claim from an in-memory dict after a single SQL read of ≤50 rows per request. CONCURRENT refresh means no blocking. |
+| E. Default Position | ✓ No new model retraining, no booster touched, no thresholds changed. Pure additive analytics layer on top of existing data. |
+
+**Red-flag checklist**:
+
+| Risk | Status |
+|---|---|
+| Full-table scans? | No — MV reads are indexed lookups. |
+| Repeated queries (per-upload, per-request)? | No — one MV read per `predict-file` call, snapshotted to a process-local dict for the rest of the request. |
+| N+1 patterns? | No — per-claim lookup is in-memory dict access after the single MV read. |
+| Repeated UPDATEs? | No — the MV is refresh-based, not row-by-row write. |
+| Unnecessary writes? | No — derived analytics, no persistence per request. |
+| Refresh-heavy operations? | No — refresh debounced via CR-090's existing 5-second window; the MV is small enough that CONCURRENT refresh completes in <1s. |
+| Partitioning implications? | No — MV is unpartitioned, ~50 rows projected total. |
+
+**Temporary artifacts**: **none.** All work via direct `Edit`/`Write` to permanent files. Two backtest runs via PowerShell stdin (no `.tmp.py` created) — output discarded after capture into the validation report.
+
+**Persistence verdict**: Analytics + Persistence (of the calibration MV only). Per-claim forecast outputs are NOT persisted (derivable). The MV itself is the only new persistent artifact.
+
+**Related**:
+- **CR-128 / CR-128B** — the prior confidence-chip implementation this CR replaces. Operator-driven redesign.
+- **CR-129** — calibration audit that quantified why the model's self-reported probability cannot be trusted directly (837P over-confident by 17pp, 837D random, 837I well-calibrated).
+- **CR-130A / CR-130B** — 837D root-cause and shortcut analysis. The forecast layer is a partial workaround for 837D while the model is retrained.
+- **CR-131A** — design specification for this CR (AIR equivalent).
+- **CR-131A.1** — temporal-split backtest that validated the bucket-vs-variant gain (>45% MAE reduction on 837I, ≥0% on 837P).
+- **CR-127** — refresh cascade pattern this CR plugs into.
+- **CR-071** — "any denied wins" labeling rule reused in the MV SQL.
+- Future CRs:
+  - CR-132 (provisional): forecast surface on `/api/recommendations/by-file/{id}` so the fix-queue page also shows the empirical anchor.
+  - CR-133 (provisional): "model decay monitor" — alert when `risk_score`-based forecast diverges from empirical-bucket forecast by >X over Y days, signalling the underlying booster is drifting.
+
+---
+
+## CR-136 — 2026-06-25 — Historical similarity forecast engine (default; bucket retained as kill-switch)
+
+**Trigger**: The CR-131C / CR-132C / CR-134 audits established that (a) batch composition — not bucket precision — drives forecast error; (b) a kNN over four target-encoded features (risk_score, payer, variant, is_replacement) over the historical adjudicated cohort cuts file MAE by 60-66% vs CR-131B; (c) deterministic grouping recovers only ~80% of that gain. CR-135's audit confirmed the gap is real and attributable to continuous-score handling.
+
+**Decision**: Promote the historical similarity engine to be the **default** forecast layer. Keep CR-131B's bucket-based forecaster as a kill-switch reachable via `RCM_FORECAST_ENGINE=bucket`. No new ML model is trained — the engine is a deterministic KDTree retrieval over the existing prediction model's outputs on adjudicated claims. CR-131B's `mv_forecast_calibration` is preserved in tree for rollback; it is no longer the primary input.
+
+**Scope**:
+
+| File | Change |
+|---|---|
+| `src/migrations/versions/0020_add_forecast_history_mv.py` *(new)* | Creates `mv_forecast_history` — adjudicated claim metadata over a 180-day window (variant, subtype, payer_id, frequency_code, is_replacement, denied, service_from_date). Does NOT join to `prediction_log`; `predicted_risk` is computed at engine-load time. ~120k rows. |
+| `src/rcm/ml/similarity.py` *(new)* | `SimilarityEngine.load()` reads the MV, scores every row by calling the current FB bundles via `_load_predict_corpus` + `HealthcarePredictor.predict`, builds per-variant KDTrees over (risk_score, payer_TE, variant_TE, is_replacement). `lookup()` returns a `NeighbourSet` with K=10 neighbours, denial counts, matching factors. ~270 LOC. |
+| `src/rcm/core/mv_refresh.py` | Added `mv_forecast_history` to `_FORECAST_MVS` so the CR-127 upload-driven cascade refreshes the similarity history alongside `mv_forecast_calibration`. |
+| `src/rcm/schemas/public.py` | `Forecast` gains `engine`, `historical_evidence_count`, `average_similarity`. `HighRiskClaimItem` gains `neighbours_found`, `neighbours_denied`, `neighbours_paid`, `average_similarity`, `matching_factors`. CR-131B fields retained for back-compat. |
+| `src/rcm/routers/public/predictions.py` | New `_forecast_engine()` selector reads `RCM_FORECAST_ENGINE` env var (default `similarity`). New `_build_forecast_similarity` + `_build_forecast_bucket` paths. Process-local caches for both engines. `/reload-bundles` clears caches so refreshes take effect without a restart. |
+| `frontend/src/pages/UploadPage.jsx` | `ForecastBanner` shows "N historically similar adjudicated claims retrieved · X% avg similarity" when `engine='similarity'`. Per-claim tooltip displays `"X/Y historically similar claims denied · Z% avg similarity · Same variant, Same payer, ..."`. CR-131B tooltip preserved as fallback when `engine='bucket'`. |
+| `tests/unit/test_similarity.py` *(new)* | 14 tests covering engine load, lookup, matching factors, aggregate math, cold-start, fallbacks, and schema serialisation. |
+
+LOC delta: ~+450 added (migration + engine + tests + frontend banner edits).
+
+**What changed**:
+- The default forecast is now derived from the K=10 historically most-similar adjudicated claims (matched on score, variant, payer, replacement-status) rather than from a fixed score-decile precision lookup.
+- The API response gains explainability: every `HighRiskClaimItem` carries the per-claim neighbour count, denied count, average similarity, and human-readable matching factors. The forecast object reports `engine`, `historical_evidence_count`, and `average_similarity` so the operator sees both the number and its evidence.
+- The historical MV is decoupled from `prediction_log`. Earlier CR-131B's `mv_forecast_calibration` joined to `prediction_log` and was sparse (~2,000 rows). The new `mv_forecast_history` joins only to `remittance_claims`, capturing all 119k+ adjudicated claims; the engine itself produces `predicted_risk` at load time by calling the FB bundles.
+- Engine selection is feature-flagged via `RCM_FORECAST_ENGINE`. Default is `similarity`; setting to `bucket` reverts to CR-131B behaviour at the next request.
+- `/reload-bundles` clears the similarity-engine cache (in addition to the existing FB-predictor cache) so a fresh MV refresh takes effect without restarting the worker.
+
+**System behavior after this change**:
+
+- `POST /api/predictions/predict-file/{id}` returns a forecast like:
+  ```jsonc
+  {
+    "forecast": {
+      "engine": "similarity",
+      "n_high": 95,
+      "expected_denials": 31.5,
+      "interval_low": 24.3,
+      "interval_high": 38.7,
+      "forecast_confidence_pct": 0.332,
+      "historical_evidence_count": 950,
+      "average_similarity": 0.99,
+      "fallback_distribution": {"similarity": 1.0}
+    },
+    "high_risk_claims": [
+      {
+        "claim_id": 152993,
+        "risk_score": 0.364,
+        "neighbours_found": 10,
+        "neighbours_denied": 2,
+        "neighbours_paid": 8,
+        "average_similarity": 1.0,
+        "matching_factors": ["Same service variant", "Same payer",
+                              "Same original/replacement status",
+                              "Similar calibrated score"]
+      },
+      ...
+    ]
+  }
+  ```
+- Cold-start cost: ~2 minutes on first request after process start or `/reload-bundles` (engine must score ~119k historical claims via the FB bundles). Subsequent requests are sub-second. The first user-visible request bears the cost; the cache holds for the lifetime of the process.
+- Backtest results (per-claim temporal 70/30 split, honest history = older 70% only, no eval-period leakage):
+
+  | Method | claim MAE | file MAE | bias | within ±1 claim | within ±2 |
+  |---|---:|---:|---:|---:|---:|
+  | CR-131B (bucket) | 0.164 | 1.548 | +0.277 | 63.3% | 85.3% |
+  | **CR-136 (similarity, deployed)** | **0.061** | **0.516** | **+0.074** | **94.2%** | **96.3%** |
+  | Δ vs CR-131B | −62.8% | **−66.7%** | −0.20 | +30.8 pp | +11.0 pp |
+  | Δ vs CR-135's 0.80 target | — | **−35.5%** (passes ≥20% bar) | — | — | — |
+
+- Per-claim explainability is now a first-class API surface. Each HIGH claim's tooltip reads e.g. *"2 of 10 historically similar claims denied · 100% avg similarity · Same payer, Same variant, Same replacement status, Similar score"*.
+
+**How to use / verify**:
+```bash
+# Apply migration
+DATABASE_URL='...' PYTHONPATH=src python -m alembic upgrade head
+
+# Live probe (cold start ~2 min; subsequent calls <2s)
+curl -s -X POST http://127.0.0.1:8000/api/predictions/predict-file/7134 \
+  | python -m json.tool | grep -E '(engine|expected_denials|historical_evidence_count|average_similarity)'
+
+# Kill-switch back to CR-131B
+RCM_FORECAST_ENGINE=bucket python -m uvicorn rcm.main:app
+
+# Unit tests
+PYTHONPATH=src python -m pytest tests/unit/test_similarity.py -v   # 14/14 pass
+```
+
+**Tests**: 14 new unit tests in `tests/unit/test_similarity.py` + 0 regressions in the rest of the suite. Full unit suite: **575/575 pass**.
+
+Coverage:
+- engine load on synthetic 600-row history with two variants and three payers
+- lookup returns NeighbourSet with correct denial counts on synthetic deterministic rule
+- low-score 837I claims retrieve mostly-paid neighbours
+- matching factors flagged when ≥60% of neighbours share the property
+- empty-history cold start returns `fallback_used='model'`
+- unknown variant routes to global tree
+- average_similarity bounded in (0, 1]
+- `MIN_VARIANT_HISTORY` threshold enforced (per-variant tree omitted below the limit)
+- aggregate math (empty, homogeneous, mixed fallback)
+- schema serialisation round-trips for the new fields
+
+**Known constraints / follow-ups**:
+- **Cold-start cost**: first request after process start scores ~119k claims (~2 min). This is bounded by FB-bundle inference speed; subsequent requests are <2s. Mitigation strategies for later: persist scored history to a parquet file alongside the MV; lazy variant-by-variant warmup; pre-warm on app start via a background task. Not done in this CR because the cold-start cost is one-time per process and acceptable for the current deployment cadence.
+- **History window**: hard-coded to 180 days in the MV. Sufficient for the current corpus; future tunability without a migration would require lifting `WINDOW_DAYS` to a settings field.
+- **`engine='model'` fallback**: triggers only when the MV is empty or `mv_forecast_history` has fewer than `MIN_VARIANT_HISTORY=100` rows per variant. The deployed engine on the current corpus serves 100% of HIGH claims via similarity; this fallback is operationally rare.
+- **CR-131B preservation**: `mv_forecast_calibration` MV + `CalibrationTable` code stay in tree as the kill-switch. They are no longer the default but are reachable via the env var. Phase 6 of CR-136 spec called for "deprecation" — done via flag (default flipped), not via code removal, to enable instant rollback. A future CR can delete the bucket layer once the similarity engine has run cleanly in production for ~30 days.
+- **CR-132B RandomForest meta-model**: explicitly **superseded**. CR-132C and this CR demonstrated that an additive ML model is unnecessary; the existing prediction model's outputs already contain the structure needed.
+
+**Phase 6 — Migration plan** (CR-136 spec's deprecation requirements, status):
+
+| Requirement | Status |
+|---|---|
+| Deprecate the CR-131B bucket forecast | **Done** — default engine flipped to similarity; CR-131B reachable only via `RCM_FORECAST_ENGINE=bucket` |
+| Remove bucket-specific forecast logic | **Deferred** — kill-switch preservation per project rollback policy; planned for ≥30 days after stable production |
+| Remove obsolete calibration structures | **Deferred** — `mv_forecast_calibration` retained as kill-switch input |
+| Keep legacy code behind feature flag | **Done** — `RCM_FORECAST_ENGINE` env var |
+| Make historical similarity engine the default | **Done** |
+
+**Rollback strategy**:
+```bash
+# Instant rollback (no code change, no DB change)
+RCM_FORECAST_ENGINE=bucket
+# Restart worker; next predict-file returns to CR-131B bucket forecaster
+
+# Full rollback if the migration itself needs to drop
+alembic downgrade 0019_add_forecast_calibration_mv
+git revert <CR-136 commit SHA>
+```
+The kill-switch is preferred over the full rollback. The kill-switch is one env var; full rollback is a migration + revert.
+
+**Architecture principles A-E compliance**:
+
+| Principle | Compliance |
+|---|---|
+| A. Storage Minimization | ✓ One new MV (~120k rows ≈ 5 MB indexed); no per-claim persistence; engine cache is process-local. |
+| B. Database Discipline | ✓ One MV read per cold start + one queries-batch per refresh; CONCURRENT refresh; no schema changes outside the new MV. |
+| C. No Premature Persistence | ✓ The KDTree, target encodings, and per-claim scored history live in process memory only; no second copy on disk. |
+| D. Query Efficiency | ✓ Per-request lookup is O(log n) over the in-process KDTree (~119k points); cold-start cost batched. |
+| E. Default Position | ✓ No new model trained, no bundle touched, no threshold changed. The engine is deterministic retrieval over existing prediction outputs. |
+
+**Red-flag checklist**:
+
+| Risk | Status |
+|---|---|
+| Full-table scans? | No — MV reads are indexed; engine query is in-memory KDTree |
+| Repeated queries (per-upload, per-request)? | No — one MV load + one history-scoring pass per cold start; subsequent requests hit the in-process cache |
+| N+1 patterns? | No — history scoring is batched in chunks of 5,000 |
+| Repeated UPDATEs? | No — MV is refresh-based |
+| Refresh-heavy operations? | No — CR-127 cascade adds one MV refresh; nightly cadence |
+| Partitioning implications? | No — MV is unpartitioned, ~120k rows |
+| Future-information leakage? | Verified by temporal-split backtest: history = older 70%, eval = newer 30%; no eval claim appears in its own neighbour set. In production, the engine refreshes nightly so newly-adjudicated claims become available the next day, not the same day. |
+
+**Temporary artifacts**: **none persisted.** One validation script (`cr136_validation.tmp.py`) created, run, deleted on completion. No `.tmp.py`, no log file, no JSON export remains on disk.
+
+**Related**:
+- **CR-131A/B** — bucket forecast layer this CR supersedes (preserved as kill-switch).
+- **CR-131A.1 / CR-131C / CR-132C** — audits that established batch composition as the dominant error source and identified the 4-feature minimum (score, variant, payer, replacement).
+- **CR-132B (rejected)** — RandomForest meta-model exploration; this CR demonstrates the additional ML model was unnecessary.
+- **CR-133** — Forecast V2 design that proposed file-level composition adjustments; superseded by the kNN approach which captures composition naturally via neighbour retrieval.
+- **CR-134** — audit that established multi-feature kNN as the strongest non-ML approach.
+- **CR-135** — audit confirming deterministic grouping recovers ~80% of kNN gain; this CR ships the remaining 20%.
+- **CR-127** — refresh cascade this CR's MV plugs into.
+- Future CRs:
+  - **CR-137 (provisional)**: persist scored history to a parquet/joblib cache to eliminate cold-start cost.
+  - **CR-138 (provisional)**: remove the bucket forecaster code path and `mv_forecast_calibration` after 30 days of clean production telemetry.

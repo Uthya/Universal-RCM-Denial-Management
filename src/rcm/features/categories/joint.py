@@ -28,6 +28,11 @@ class JointEncoderSnapshot:
     provider_payer: dict[tuple[int, int], float] = field(default_factory=dict)
     provider_cpt: dict[tuple[int, str], float] = field(default_factory=dict)
     payer_overall: dict[int, float] = field(default_factory=dict)               # for Cat A bridging
+    # CR-126B: raw counts for Bayesian-smoothed recency rates. Keyed by
+    # (payer_id, service_variant, claim_subtype) → (denied_count, volume).
+    # Smoothing applied in coverage.py at lookup time.
+    payer_recent_2k: dict[tuple[int, str, str], tuple[int, int]] = field(default_factory=dict)
+    payer_90d:       dict[tuple[int, str, str], tuple[int, int]] = field(default_factory=dict)
 
 
 async def load_joint_snapshot(
@@ -106,6 +111,27 @@ async def load_joint_snapshot(
         """), {"py": distinct_payers})
         for r in rows:
             snap.payer_overall[r["payer_id"]] = float(r["rate"] or 0.0)
+
+        # CR-126B — recency raw counts. MV may not yet exist on a stale dev DB;
+        # _safe_fetch swallows the error and lifecycle features default to prior.
+        rows = await _safe_fetch(text("""
+            SELECT payer_id, service_variant, claim_subtype, denied_count, volume
+            FROM mv_payer_denial_rates_recent_2k
+            WHERE payer_id = ANY(:py)
+        """), {"py": distinct_payers})
+        for r in rows:
+            snap.payer_recent_2k[(r["payer_id"], r["service_variant"], r["claim_subtype"])] = (
+                int(r["denied_count"] or 0), int(r["volume"] or 0),
+            )
+        rows = await _safe_fetch(text("""
+            SELECT payer_id, service_variant, claim_subtype, denied_count, volume
+            FROM mv_payer_denial_rates_90d
+            WHERE payer_id = ANY(:py)
+        """), {"py": distinct_payers})
+        for r in rows:
+            snap.payer_90d[(r["payer_id"], r["service_variant"], r["claim_subtype"])] = (
+                int(r["denied_count"] or 0), int(r["volume"] or 0),
+            )
 
     return snap
 

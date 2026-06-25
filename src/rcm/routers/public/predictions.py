@@ -24,6 +24,7 @@ Shadow logging:
 from __future__ import annotations
 
 import logging
+import math
 import os
 import time
 import uuid as _uuid
@@ -35,7 +36,12 @@ from fastapi import APIRouter, HTTPException
 
 from rcm.core.config import settings
 from rcm.core.database import async_session
+from rcm.ml.forecast import CalibrationTable, aggregate_forecast
 from rcm.ml.reason_renderer import render_risk_factors
+from rcm.ml.similarity import (
+    SimilarityEngine,
+    aggregate_similarity_forecast,
+)
 from rcm.ml.simple_pipeline import (
     NoTrainingDataError,
     ScoredClaim,
@@ -45,6 +51,7 @@ from rcm.ml.simple_pipeline import (
 )
 from rcm.schemas.public import (
     DatasetStatsResponse,
+    Forecast,
     PredictClaimResponse,
     PredictFileResponse,
     RiskFactorItem,
@@ -54,6 +61,245 @@ from rcm.schemas.public import (
     TrainSplit,
     UnseenIndicators,
 )
+
+
+# CR-136 — engine selector.  Default uses the historical similarity engine
+# (CR-136), with kill-switch RCM_FORECAST_ENGINE=bucket reverting to the
+# CR-131B bucket forecaster.  Both layers are kept in tree so rollback is a
+# single env-var flip rather than a code revert.
+def _forecast_engine() -> str:
+    return os.environ.get("RCM_FORECAST_ENGINE", "similarity").strip().lower()
+
+
+# Cached engine instances — loaded on first use, reset by /reload-bundles.
+_SIM_ENGINE: SimilarityEngine | None = None
+_BUCKET_TABLE: CalibrationTable | None = None
+
+
+async def _get_sim_engine() -> SimilarityEngine | None:
+    global _SIM_ENGINE
+    if _SIM_ENGINE is not None:
+        return _SIM_ENGINE
+    c = await _connect()
+    try:
+        _SIM_ENGINE = await SimilarityEngine.load(c)
+    finally:
+        await c.close()
+    return _SIM_ENGINE
+
+
+async def _get_bucket_table() -> CalibrationTable:
+    global _BUCKET_TABLE
+    if _BUCKET_TABLE is not None:
+        return _BUCKET_TABLE
+    c = await _connect()
+    try:
+        _BUCKET_TABLE = await CalibrationTable.load(c)
+    finally:
+        await c.close()
+    return _BUCKET_TABLE
+
+
+def _reset_forecast_caches() -> None:
+    """Called by /reload-bundles so a fresh refresh of mv_forecast_history /
+    mv_forecast_calibration takes effect without a process restart."""
+    global _SIM_ENGINE, _BUCKET_TABLE
+    _SIM_ENGINE = None
+    _BUCKET_TABLE = None
+
+
+async def _payer_id_for(claim_id: int) -> int | None:
+    c = await _connect()
+    try:
+        return await c.fetchval(
+            "SELECT payer_id FROM claims WHERE id = $1", int(claim_id)
+        )
+    finally:
+        await c.close()
+
+
+async def _payer_ids_bulk(claim_ids: list[int]) -> dict[int, int | None]:
+    if not claim_ids:
+        return {}
+    c = await _connect()
+    try:
+        rows = await c.fetch(
+            "SELECT id, payer_id FROM claims WHERE id = ANY($1::bigint[])",
+            claim_ids,
+        )
+    finally:
+        await c.close()
+    return {int(r["id"]): r["payer_id"] for r in rows}
+
+
+async def _payer_freq_bulk(claim_ids: list[int]) -> dict[int, tuple[int | None, str | None]]:
+    """One query for (payer_id, frequency_code) per claim — used by the
+    similarity engine to populate the lookup vector."""
+    if not claim_ids:
+        return {}
+    c = await _connect()
+    try:
+        rows = await c.fetch(
+            "SELECT id, payer_id, frequency_code FROM claims WHERE id = ANY($1::bigint[])",
+            claim_ids,
+        )
+    finally:
+        await c.close()
+    return {int(r["id"]): (r["payer_id"], r["frequency_code"]) for r in rows}
+
+
+async def _build_forecast(scored: list[ScoredClaim]) -> tuple[Forecast, dict[int, dict]]:
+    """CR-136 — dispatch to similarity engine (default) or bucket forecaster
+    (kill-switch).  Returns (batch_forecast, per_claim_lookup_map).
+
+    The per-claim map carries:
+      - empirical_bucket_precision / empirical_sample_size / fallback_used
+        (always populated for backwards compatibility)
+      - neighbours_found / neighbours_denied / neighbours_paid /
+        average_similarity / matching_factors (populated when similarity
+        engine served the lookup)
+    """
+    high_scored = [s for s in scored if s.risk_level == "HIGH"]
+    if not high_scored:
+        return Forecast(), {}
+
+    engine_name = _forecast_engine()
+
+    if engine_name == "similarity":
+        sim = await _get_sim_engine()
+        if sim is None or sim.history.empty:
+            # Cold-start: fall back to bucket engine until history populates
+            engine_name = "bucket"
+        else:
+            return await _build_forecast_similarity(high_scored, sim)
+
+    # Bucket path (CR-131B kill-switch)
+    return await _build_forecast_bucket(high_scored)
+
+
+async def _build_forecast_similarity(
+    high_scored: list[ScoredClaim], sim: SimilarityEngine,
+) -> tuple[Forecast, dict[int, dict]]:
+    payer_freq = await _payer_freq_bulk([int(s.claim_id) for s in high_scored])
+    neighbour_sets = []
+    per_claim: dict[int, dict] = {}
+    for s in high_scored:
+        cid = int(s.claim_id)
+        pid, freq = payer_freq.get(cid, (None, None))
+        ns = sim.lookup(
+            risk_score=float(s.risk_score),
+            service_variant=s.service_variant or "",
+            payer_id=pid,
+            is_replacement=(freq == "7"),
+        )
+        neighbour_sets.append(ns)
+        per_claim[cid] = {
+            "empirical_bucket_precision": ns.p_hat,        # back-compat field
+            "empirical_sample_size": ns.n_neighbours,      # back-compat field
+            "fallback_used": ns.fallback_used,
+            "neighbours_found": ns.n_neighbours,
+            "neighbours_denied": ns.n_denied,
+            "neighbours_paid": ns.n_paid,
+            "average_similarity": ns.average_similarity,
+            "matching_factors": list(ns.matching_factors),
+        }
+    sim_fc = aggregate_similarity_forecast(
+        neighbour_sets, window_days=180, last_history_refresh=None,
+    )
+    forecast = Forecast(
+        n_high=sim_fc.n_high,
+        expected_denials=sim_fc.expected_denials,
+        expected_approvals=sim_fc.expected_approvals,
+        forecast_confidence_pct=sim_fc.forecast_confidence_pct,
+        interval_low=sim_fc.interval_low,
+        interval_high=sim_fc.interval_high,
+        historical_sample_size=sim_fc.historical_evidence_count,
+        data_window_days=sim_fc.data_window_days,
+        fallback_distribution=sim_fc.fallback_distribution,
+        last_calibration_refresh=sim_fc.last_history_refresh,
+        engine="similarity",
+        historical_evidence_count=sim_fc.historical_evidence_count,
+        average_similarity=sim_fc.average_similarity,
+    )
+    return forecast, per_claim
+
+
+async def _build_forecast_bucket(
+    high_scored: list[ScoredClaim],
+) -> tuple[Forecast, dict[int, dict]]:
+    """CR-131B kill-switch: bucket-precision forecast."""
+    table = await _get_bucket_table()
+    lookups = []
+    per_claim: dict[int, dict] = {}
+    for s in high_scored:
+        L = table.lookup(
+            risk_score=float(s.risk_score),
+            service_variant=s.service_variant or None,
+            claim_subtype=s.claim_subtype or None,
+        )
+        lookups.append(L)
+        per_claim[int(s.claim_id)] = {
+            "empirical_bucket_precision": L.p_hat,
+            "empirical_sample_size": L.sample_size,
+            "fallback_used": L.fallback_used,
+            "neighbours_found": 0,
+            "neighbours_denied": 0,
+            "neighbours_paid": 0,
+            "average_similarity": None,
+            "matching_factors": [],
+        }
+    bucket_fc = aggregate_forecast(
+        lookups, data_window_days=90, last_refresh=table.last_refresh,
+    )
+    return Forecast(
+        n_high=bucket_fc.n_high,
+        expected_denials=bucket_fc.expected_denials,
+        expected_approvals=bucket_fc.expected_approvals,
+        forecast_confidence_pct=bucket_fc.forecast_confidence_pct,
+        interval_low=bucket_fc.interval_low,
+        interval_high=bucket_fc.interval_high,
+        historical_sample_size=bucket_fc.historical_sample_size,
+        data_window_days=bucket_fc.data_window_days,
+        fallback_distribution=bucket_fc.fallback_distribution,
+        last_calibration_refresh=bucket_fc.last_calibration_refresh,
+        engine="bucket",
+    ), per_claim
+
+
+async def _lookup_actual_outcomes(claim_ids: list[int]) -> dict[int, str]:
+    """CR-128B — bulk lookup of actual 835 outcomes for a list of claim_ids.
+
+    Returns a {claim_id → "denied" | "approved"} dict. Claims with no
+    matching remittance_claims row are omitted (caller treats as None →
+    "pending"). A claim that has BOTH a denied and an approved remit
+    (multi-payer cycles) is labelled "denied" — the "any denial wins" rule
+    that CR-071's training-corpus query already uses.
+    """
+    if not claim_ids:
+        return {}
+    c = await _connect()
+    try:
+        rows = await c.fetch(
+            """
+            SELECT claim_id,
+                   max(CASE WHEN claim_status_code = '4' THEN 1 ELSE 0 END) AS any_denied,
+                   max(CASE WHEN claim_status_code IN ('1','2','3','19','20') THEN 1 ELSE 0 END) AS any_approved
+            FROM remittance_claims
+            WHERE claim_id = ANY($1::bigint[])
+            GROUP BY claim_id
+            """,
+            claim_ids,
+        )
+    finally:
+        await c.close()
+    out: dict[int, str] = {}
+    for r in rows:
+        if r["any_denied"]:
+            out[int(r["claim_id"])] = "denied"
+        elif r["any_approved"]:
+            out[int(r["claim_id"])] = "approved"
+        # else: row exists but is neither denied nor approved (rare) → omit
+    return out
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -244,14 +490,21 @@ async def dataset_stats() -> DatasetStatsResponse:
 # ---------------------------------------------------------------------------
 
 async def _refresh_training_corpus() -> dict[str, int]:
-    """CR-083: refresh mv_claim_labels before training begins.
+    """CR-083 + CR-127: refresh mv_claim_labels AND every denial-rate MV
+    downstream of it before training begins.
 
-    Integrity rule: silent fallback to stale data is prohibited. Any failure
-    (DB unreachable, REFRESH error) raises HTTPException(503) so the caller
-    aborts training and the operator sees an explicit error.
+    Integrity rule: silent fallback to stale data is prohibited. A failure
+    of the ROOT (mv_claim_labels) refresh raises HTTPException(503) so the
+    caller aborts training. Failures of downstream MVs are logged and the
+    cascade continues — the trainer's CR-107 leakage-safe override
+    recomputes the 8 MV-backed denial-rate features per-row anyway, so a
+    stale downstream MV affects predict time, not train time. CR-127's
+    cascade is what makes predict-time MV freshness possible.
 
-    Returns a dict with `duration_ms` and `row_count_after` on success.
+    Returns a dict with `duration_ms`, `row_count_after`, and per-MV
+    `cascade_timings_ms`.
     """
+    from rcm.core.mv_refresh import refresh_denial_rate_cascade, TARGET_MV
     t0 = time.perf_counter()
     try:
         conn = await asyncpg.connect(dsn=settings.sync_database_url(), timeout=8)
@@ -264,25 +517,24 @@ async def _refresh_training_corpus() -> dict[str, int]:
             ),
         )
     try:
-        try:
-            await conn.execute(
-                "REFRESH MATERIALIZED VIEW CONCURRENTLY mv_claim_labels"
-            )
-        except Exception as exc:
+        timings = await refresh_denial_rate_cascade(conn)
+        # Root refresh failure is fatal — leakage-safe override depends on
+        # mv_claim_labels being current. Downstream failures are non-fatal.
+        if timings.get(TARGET_MV, -1.0) < 0.0:
             raise HTTPException(
                 status_code=503,
                 detail=(
                     "Training aborted: REFRESH MATERIALIZED VIEW CONCURRENTLY "
-                    "mv_claim_labels failed. Training cannot proceed on stale "
-                    f"data. {type(exc).__name__}: {exc}"
+                    f"{TARGET_MV} failed. Training cannot proceed on stale data."
                 ),
             )
-        row_count = await conn.fetchval("SELECT count(*) FROM mv_claim_labels")
+        row_count = await conn.fetchval(f"SELECT count(*) FROM {TARGET_MV}")
     finally:
         await conn.close()
     return {
         "duration_ms": int((time.perf_counter() - t0) * 1000),
         "row_count_after": int(row_count or 0),
+        "cascade_timings_ms": {k: int(v * 1000) for k, v in timings.items()},
     }
 
 
@@ -591,6 +843,10 @@ async def reload_bundles() -> dict:
     bundle inventory the next predict will load from."""
     cleared = len(_FB_PREDICTOR_CACHE)
     _FB_PREDICTOR_CACHE.clear()
+    # CR-136: also clear forecast-layer caches so a freshly refreshed
+    # mv_forecast_history / mv_forecast_calibration takes effect on the
+    # next predict call without restarting the worker.
+    _reset_forecast_caches()
     available = _inventory_available_bundles()
     logger.info(
         "reload-bundles: cleared %d cached predictor(s); %d bundle(s) on disk",
@@ -670,8 +926,17 @@ async def predict_file(edi_file_id: int) -> PredictFileResponse:
     buckets = {"HIGH": 0, "MEDIUM": 0, "LOW": 0}
     for s in scored:
         buckets[s.risk_level] = buckets.get(s.risk_level, 0) + 1
-    high_risk = [
-        {
+
+    # CR-128B: actual 835 outcomes for the HIGH subset (UI ✓/✗ icon).
+    # CR-131B: empirical denial forecast aggregated across HIGH cohort.
+    high_scored = [s for s in scored if s.risk_level == "HIGH"]
+    outcomes = await _lookup_actual_outcomes([int(s.claim_id) for s in high_scored])
+    forecast, per_claim_lookup = await _build_forecast(scored)
+
+    high_risk = []
+    for s in high_scored:
+        cl = per_claim_lookup.get(int(s.claim_id), {})
+        high_risk.append({
             "claim_id": s.claim_id,
             "claim_number": s.claim_number,
             "payer_name": s.payer_name,
@@ -679,14 +944,22 @@ async def predict_file(edi_file_id: int) -> PredictFileResponse:
             "claim_subtype": s.claim_subtype,
             "risk_score": s.risk_score,
             "risk_level": s.risk_level,
+            "actual_outcome": outcomes.get(int(s.claim_id)),
+            "empirical_bucket_precision": cl.get("empirical_bucket_precision"),
+            "empirical_sample_size": cl.get("empirical_sample_size", 0),
+            "fallback_used": cl.get("fallback_used"),
+            "neighbours_found": cl.get("neighbours_found", 0),
+            "neighbours_denied": cl.get("neighbours_denied", 0),
+            "neighbours_paid": cl.get("neighbours_paid", 0),
+            "average_similarity": cl.get("average_similarity"),
+            "matching_factors": cl.get("matching_factors", []),
             "top_denial_reasons": s.top_denial_reasons,
-        }
-        for s in scored if s.risk_level == "HIGH"
-    ]
+        })
     return PredictFileResponse(
         edi_file_id=edi_file_id,
         predicted_claims=len(scored),
         risk_summary=buckets,
+        forecast=forecast,
         high_risk_claims=high_risk,
     )
 
@@ -713,16 +986,36 @@ async def _legacy_predict_file_simple(edi_file_id: int) -> PredictFileResponse:
     buckets = {"HIGH": 0, "MEDIUM": 0, "LOW": 0}
     for s in scored:
         buckets[s.risk_level] = buckets.get(s.risk_level, 0) + 1
-    high_risk = [
-        {"claim_id": s.claim_id, "claim_number": s.claim_number,
-         "payer_name": s.payer_name, "service_variant": s.service_variant,
-         "claim_subtype": s.claim_subtype, "risk_score": s.risk_score,
-         "risk_level": s.risk_level, "top_denial_reasons": s.top_denial_reasons}
-        for s in scored if s.risk_level == "HIGH"
-    ]
+
+    # CR-128B + CR-131B: outcome lookup + empirical forecast (legacy path).
+    high_scored = [s for s in scored if s.risk_level == "HIGH"]
+    outcomes = await _lookup_actual_outcomes([int(s.claim_id) for s in high_scored])
+    forecast, per_claim_lookup = await _build_forecast(scored)
+
+    high_risk = []
+    for s in high_scored:
+        cl = per_claim_lookup.get(int(s.claim_id), {})
+        high_risk.append({
+            "claim_id": s.claim_id, "claim_number": s.claim_number,
+            "payer_name": s.payer_name, "service_variant": s.service_variant,
+            "claim_subtype": s.claim_subtype, "risk_score": s.risk_score,
+            "risk_level": s.risk_level,
+            "actual_outcome": outcomes.get(int(s.claim_id)),
+            "empirical_bucket_precision": cl.get("empirical_bucket_precision"),
+            "empirical_sample_size": cl.get("empirical_sample_size", 0),
+            "fallback_used": cl.get("fallback_used"),
+            "neighbours_found": cl.get("neighbours_found", 0),
+            "neighbours_denied": cl.get("neighbours_denied", 0),
+            "neighbours_paid": cl.get("neighbours_paid", 0),
+            "average_similarity": cl.get("average_similarity"),
+            "matching_factors": cl.get("matching_factors", []),
+            "top_denial_reasons": s.top_denial_reasons,
+        })
     return PredictFileResponse(
         edi_file_id=edi_file_id, predicted_claims=len(scored),
-        risk_summary=buckets, high_risk_claims=high_risk,
+        risk_summary=buckets,
+        forecast=forecast,
+        high_risk_claims=high_risk,
     )
 
 

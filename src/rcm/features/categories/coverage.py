@@ -1,4 +1,7 @@
-"""Category A — coverage / eligibility (8 features; CR-104 retired is_secondary_claim, cross_payer_count_for_patient)."""
+"""Category A — coverage / eligibility (10 features; CR-104 retired
+is_secondary_claim, cross_payer_count_for_patient; CR-126B added
+payer_overall_denial_rate_recent_2k_smoothed and
+payer_overall_denial_rate_90d_smoothed)."""
 
 from __future__ import annotations
 
@@ -9,6 +12,27 @@ import pandas as pd
 
 from rcm.features.categories._helpers import _as_date, _has_str
 from rcm.features.categories.availability import RefDataLookup
+
+
+# CR-126B Bayesian smoothing constants. Tuned against the empirical lifetime
+# global denial prior measured in CR-124. Changing these does NOT require a
+# migration — the MVs store raw counts, and smoothing happens here.
+_SMOOTHING_ALPHA: float = 25.0
+_SMOOTHING_PRIOR: float = 0.2772
+
+
+def _smooth_recency(
+    snap_dict: dict, key: tuple, alpha: float = _SMOOTHING_ALPHA, prior: float = _SMOOTHING_PRIOR,
+) -> float:
+    """Bayesian-smoothed rate: (denied + α·prior) / (volume + α).
+
+    snap_dict stores (denied_count, volume). Missing key → return prior
+    (defensive default for unseen payers; matches CR-125 design)."""
+    entry = snap_dict.get(key)
+    if entry is None:
+        return float(prior)
+    denied, volume = entry
+    return float((denied + alpha * prior) / (volume + alpha))
 
 
 _COB_MAP = {None: 0, "": 0, "P": 1, "S": 2, "T": 3}
@@ -41,10 +65,14 @@ def compute(
     ref: RefDataLookup | None = None,
     payer_overall_denial: dict[int, float] | None = None,
     payer_taxonomy_encoded: pd.Series | None = None,
+    payer_recent_2k: dict[tuple[int, str, str], tuple[int, int]] | None = None,
+    payer_90d: dict[tuple[int, str, str], tuple[int, int]] | None = None,
 ) -> pd.DataFrame:
     out = pd.DataFrame(index=df.index)
     ref = ref or RefDataLookup()
     payer_overall_denial = payer_overall_denial or {}
+    payer_recent_2k = payer_recent_2k or {}
+    payer_90d = payer_90d or {}
 
     ages = [
         _age_at(dob, svc)
@@ -106,5 +134,24 @@ def compute(
         out["payer_taxonomy_encoded"] = payer_taxonomy_encoded.astype("float32").reindex(df.index, fill_value=0.0)
     else:
         out["payer_taxonomy_encoded"] = pd.Series(0.0, index=df.index, dtype="float32")
+
+    # CR-126B: Bayesian-smoothed recency denial rates. Predict time reads
+    # from mv_payer_denial_rates_{recent_2k,90d} via joint_snap; smoothing
+    # applied here. Train time overrides with leakage-safe per-row values
+    # via FeatureBuilder._assemble's safe_recency_rates path.
+    variants = df.get("service_variant", pd.Series([None] * len(df), index=df.index))
+    subtypes = df.get("claim_subtype",   pd.Series([None] * len(df), index=df.index))
+    keys = [
+        (pid, str(v), str(s)) if (pid is not None and _has_str(v) and _has_str(s)) else None
+        for pid, v, s in zip(df.get("payer_id", pd.Series([None] * len(df))), variants, subtypes)
+    ]
+    out["payer_overall_denial_rate_recent_2k_smoothed"] = pd.Series(
+        [_smooth_recency(payer_recent_2k, k) if k is not None else _SMOOTHING_PRIOR for k in keys],
+        index=df.index,
+    ).astype("float32")
+    out["payer_overall_denial_rate_90d_smoothed"] = pd.Series(
+        [_smooth_recency(payer_90d, k) if k is not None else _SMOOTHING_PRIOR for k in keys],
+        index=df.index,
+    ).astype("float32")
 
     return out

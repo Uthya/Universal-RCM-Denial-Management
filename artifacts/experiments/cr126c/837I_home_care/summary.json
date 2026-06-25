@@ -1,0 +1,111 @@
+{
+  "service_variant": "837I",
+  "claim_subtype": "home_care",
+  "include_lifecycle": true,
+  "include_freq7": true,
+  "n_train": 21409,
+  "n_val": 4588,
+  "n_held": 4588,
+  "prevalence": 0.48366846493379106,
+  "threshold": 0.01,
+  "total_gain": 1607.192757844925,
+  "ece": 0.003495821868554203,
+  "held_overall": {
+    "n": 4588,
+    "prevalence": 0.48365300784655624,
+    "roc_auc": 0.9985872613643518,
+    "pr_auc": 0.9976280403053311,
+    "precision": 0.8819554848966613,
+    "recall": 1.0,
+    "f1": 0.9372756071805702,
+    "brier": 0.011115801520645618,
+    "fpr": 0.1253693541578725
+  },
+  "cohort_metrics": {
+    "freq=1": {
+      "n": 2263,
+      "prevalence": 0.19885108263367213,
+      "roc_auc": 0.996408040693755,
+      "pr_auc": 0.9820605959633841,
+      "precision": 0.6267409470752089,
+      "recall": 1.0,
+      "f1": 0.7705479452054794,
+      "brier": 0.01691625267267227,
+      "fpr": 0.14782129067843353
+    },
+    "freq=7": {
+      "n": 2325,
+      "prevalence": 0.7608602150537634,
+      "roc_auc": 0.9988363746538099,
+      "pr_auc": 0.9993291407582758,
+      "precision": 0.9838709677419355,
+      "recall": 1.0,
+      "f1": 0.991869918699187,
+      "brier": 0.0054700314067304134,
+      "fpr": 0.052158273381294966
+    }
+  },
+  "candidate_report": [
+    {
+      "candidate": "payer_overall_recent_2k",
+      "mode": "recent_2k",
+      "gain": 142.8805389404297,
+      "splits": 99,
+      "gain_share_pct": 8.890068614546106,
+      "shap_abs": 1509.6600341796875,
+      "shap_share_pct": 4.460177165665566,
+      "activation_pct": 99.82671244073893
+    },
+    {
+      "candidate": "payer_overall_90d",
+      "mode": "90d",
+      "gain": 103.78750610351562,
+      "splits": 138,
+      "gain_share_pct": 6.457688761781361,
+      "shap_abs": 1700.814453125,
+      "shap_share_pct": 5.024928536963029,
+      "activation_pct": 99.82671244073893
+    },
+    {
+      "candidate": "payer_cpt_recent_2k",
+      "mode": "recent_2k",
+      "gain": 6.312149524688721,
+      "splits": 43,
+      "gain_share_pct": 0.3927437759956462,
+      "shap_abs": 124.55368041992188,
+      "shap_share_pct": 0.367984492356522,
+      "activation_pct": 99.82671244073893
+    },
+    {
+      "candidate": "payer_dx_recent_2k",
+      "mode": "recent_2k",
+      "gain": 5.971548080444336,
+      "splits": 32,
+      "gain_share_pct": 0.3715514552499321,
+      "shap_abs": 97.84695434570312,
+      "shap_share_pct": 0.2890814763734296,
+      "activation_pct": 99.68612064737616
+    },
+    {
+      "candidate": "payer_cpt_90d",
+      "mode": "90d",
+      "gain": 3.7552921772003174,
+      "splits": 15,
+      "gain_share_pct": 0.2336553695174539,
+      "shap_abs": 41.082523345947266,
+      "shap_share_pct": 0.12137522911579372,
+      "activation_pct": 99.82671244073893
+    },
+    {
+      "candidate": "payer_dx_90d",
+      "mode": "90d",
+      "gain": 2.8953561782836914,
+      "splits": 23,
+      "gain_share_pct": 0.18014990200466416,
+      "shap_abs": 70.55519104003906,
+      "shap_share_pct": 0.20845001183789577,
+      "activation_pct": 99.68612064737616
+    }
+  ],
+  "feature_columns_n_aug": 134
+}

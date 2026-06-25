@@ -24,12 +24,10 @@ def test_all_healthcare_cols_have_specs():
 
 
 def test_healthcare_column_count_matches_categories():
-    # CR-104 (Tier-A retirement) brought universal to 101; CR-122B retired
-    # frequency_code_encoded (universal 101 → 100). Healthcare = 100 universal
-    # + 4 Cat-M = 104. NB: specs_by_category(VARIANT) sums ALL variant-block
-    # specs across 7 blocks — not a per-variant comparator.
+    # CR-104 → 101; CR-122B → 100; CR-126B added 2 recency smoothed features
+    # → universal = 102. Healthcare = 102 universal + 4 Cat-M = 106.
     universal_n = len(universal_columns())
-    assert universal_n == 100
+    assert universal_n == 102
     assert feature_count("837P", "healthcare") == universal_n + 4
 
 

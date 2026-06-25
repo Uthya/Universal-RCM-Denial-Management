@@ -1,0 +1,106 @@
+{
+  "service_variant": "837P",
+  "claim_subtype": "healthcare",
+  "include_lifecycle": false,
+  "include_freq7": false,
+  "n_train": 29960,
+  "n_val": 6420,
+  "n_held": 6421,
+  "prevalence": 0.047568982033130064,
+  "threshold": 0.06999999999999999,
+  "total_gain": 5414.701281130314,
+  "ece": 0.0011878315375091215,
+  "held_metrics_overall": {
+    "name": "held_overall",
+    "n": 6421,
+    "prevalence": 0.04765612832892073,
+    "roc_auc": 0.9978919831764812,
+    "pr_auc": 0.9883603301270303,
+    "precision": 0.9373040752351097,
+    "recall": 0.9771241830065359,
+    "f1": 0.9568,
+    "brier_cal": 0.0021087198983877897
+  },
+  "cohort_metrics": {},
+  "candidate_report": [
+    {
+      "candidate": "recent_2k",
+      "gain": 29.39687156677246,
+      "splits": 82,
+      "gain_share_pct": 0.542908464206836,
+      "shap_abs": 452.45855712890625,
+      "shap_share_pct": 0.8691422026699006
+    },
+    {
+      "candidate": "recent_5k",
+      "gain": 26.027389526367188,
+      "splits": 23,
+      "gain_share_pct": 0.4806800629440077,
+      "shap_abs": 491.1874084472656,
+      "shap_share_pct": 0.9435376994758632
+    },
+    {
+      "candidate": "recent_10k",
+      "gain": 0.0,
+      "splits": 0,
+      "gain_share_pct": 0.0,
+      "shap_abs": 0.0,
+      "shap_share_pct": 0.0
+    },
+    {
+      "candidate": "90d",
+      "gain": 47.7434196472168,
+      "splits": 78,
+      "gain_share_pct": 0.8817369078807317,
+      "shap_abs": 1195.392578125,
+      "shap_share_pct": 2.2962680714883916
+    },
+    {
+      "candidate": "lifetime",
+      "gain": 0.0,
+      "splits": 0,
+      "gain_share_pct": 0.0,
+      "shap_abs": 0.0,
+      "shap_share_pct": 0.0
+    }
+  ],
+  "stability": {
+    "recent_2k": {
+      "n_nonzero": 6406,
+      "mean": 0.06828274577856064,
+      "std": 0.05345745384693146,
+      "min": 0.03135746717453003,
+      "max": 0.567254900932312
+    },
+    "recent_5k": {
+      "n_nonzero": 6406,
+      "mean": 0.07069972157478333,
+      "std": 0.05246996879577637,
+      "min": 0.03135746717453003,
+      "max": 0.567254900932312
+    },
+    "recent_10k": {
+      "n_nonzero": 6406,
+      "mean": 0.07069972157478333,
+      "std": 0.05246996879577637,
+      "min": 0.03135746717453003,
+      "max": 0.567254900932312
+    },
+    "90d": {
+      "n_nonzero": 6406,
+      "mean": 0.05372771620750427,
+      "std": 0.032132044434547424,
+      "min": 0.032232556492090225,
+      "max": 0.5116215944290161
+    },
+    "lifetime": {
+      "n_nonzero": 6406,
+      "mean": 0.07069972157478333,
+      "std": 0.05246996879577637,
+      "min": 0.03135746717453003,
+      "max": 0.567254900932312
+    }
+  },
+  "candidate_compute_seconds": 0.10435247421264648,
+  "feature_columns_n_with_candidates": 114
+}

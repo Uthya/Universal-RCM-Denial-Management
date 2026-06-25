@@ -129,6 +129,15 @@ _COVERAGE = (
         leakage_risk=_RISK.MEDIUM),
     _F("payer_taxonomy_encoded",        _CAT.COVERAGE, _SRC.PAYER,   "float", "target-encoded payer.payer_taxonomy",
         leakage_risk=_RISK.MEDIUM),
+    # CR-126B Bayesian-smoothed recency denial-rate features (α=25, prior=0.2772).
+    # Predict-time: read from mv_payer_denial_rates_recent_2k / _90d, smooth in joint.py.
+    # Train-time: per-row leakage-safe override via compute_leakage_safe_recency_rates.
+    _F("payer_overall_denial_rate_recent_2k_smoothed", _CAT.COVERAGE, _SRC.MATERIALIZED_VIEW, "float",
+        "Bayesian-smoothed denial rate over the last 2000 claims for this payer (α=25)",
+        leakage_risk=_RISK.MEDIUM),
+    _F("payer_overall_denial_rate_90d_smoothed",       _CAT.COVERAGE, _SRC.MATERIALIZED_VIEW, "float",
+        "Bayesian-smoothed denial rate over the last 90 days for this payer (α=25)",
+        leakage_risk=_RISK.MEDIUM),
 )
 
 
@@ -512,6 +521,31 @@ FEATURE_COLUMNS_SPECIALTY: tuple[str, ...] = _UNIVERSAL_COLUMNS + tuple(s.name f
 FEATURE_COLUMNS_GLOBAL: tuple[str, ...] = _UNIVERSAL_COLUMNS
 
 
+# CR-126B: per-variant column exclusions. When a feature is added to
+# `_UNIVERSAL_COLUMNS` but its predictive value on a specific variant fails
+# the pre-merge gate (CR-126 PR-AUC ±0.005), that variant's bundle stays
+# on the prior column shape AND the new column is dropped from its
+# `expected` list. The booster on that variant never sees these features.
+_VARIANT_EXCLUDES: dict[tuple[str, str], frozenset[str]] = {
+    # CR-126B: 837D held-out PR-AUC regressed by 0.087 when the recency
+    # features were included (corpus has only ~100 positives in 8,457 rows,
+    # making the booster overfit-sensitive to the +2 columns). Per the
+    # CR-126 pre-merge gate, 837D stays on the pre-CR-126B 108-column
+    # schema.
+    ("837D", "dental"): frozenset({
+        "payer_overall_denial_rate_recent_2k_smoothed",
+        "payer_overall_denial_rate_90d_smoothed",
+    }),
+}
+
+
+def _apply_excludes(cols: tuple[str, ...], service_variant: str, claim_subtype: str) -> tuple[str, ...]:
+    excludes = _VARIANT_EXCLUDES.get((service_variant, claim_subtype))
+    if not excludes:
+        return cols
+    return tuple(c for c in cols if c not in excludes)
+
+
 # Registered (variant, subtype) → ordered column list. Inpatient and hospice
 # subtypes route to the SAME institutional_other column list per spec §2.2
 # routing rules (the 837I dispatcher folds them in).
@@ -560,7 +594,10 @@ def get_feature_columns(
             f"Pass fall_back_to_global=True to use the universal-only column list."
         )
     if include_lifecycle:
-        return cols + LIFECYCLE_FEATURE_COLUMNS
+        cols = cols + LIFECYCLE_FEATURE_COLUMNS
+    # CR-126B: apply variant-specific excludes AFTER the universal +
+    # lifecycle composition. 837D drops the 2 recency features here.
+    cols = _apply_excludes(cols, service_variant, claim_subtype)
     return cols
 
 

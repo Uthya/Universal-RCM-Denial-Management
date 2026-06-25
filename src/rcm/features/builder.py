@@ -115,6 +115,93 @@ _LEAKAGE_SAFE_KEYS: list[tuple[str, tuple[str, ...]]] = [
 _LEAKAGE_SAFE_FEATURE_NAMES: tuple[str, ...] = tuple(f for f, _ in _LEAKAGE_SAFE_KEYS)
 
 
+# CR-126B: Bayesian-smoothed recency features. Predict time reads from
+# materialized views (joint_snap.payer_recent_2k / payer_90d) and applies
+# smoothing in coverage.py. Train time overrides each row with a per-row
+# leakage-safe value via `compute_leakage_safe_recency_rates`.
+_RECENCY_FEATURE_NAMES: tuple[str, ...] = (
+    "payer_overall_denial_rate_recent_2k_smoothed",
+    "payer_overall_denial_rate_90d_smoothed",
+)
+_RECENCY_ALPHA: float = 25.0
+_RECENCY_PRIOR: float = 0.2772
+_RECENCY_WINDOW_N: int = 2000
+
+
+def compute_leakage_safe_recency_rates(
+    query_df: pd.DataFrame,
+    train_df: pd.DataFrame,
+    train_y: np.ndarray | pd.Series,
+) -> pd.DataFrame:
+    """Per-row leakage-safe smoothed recency rates for the 2 CR-126B
+    recency features.
+
+    For each ``query_df`` row at date D with payer P:
+      - ``payer_overall_denial_rate_recent_2k_smoothed`` =
+          smoothed rate over the most recent 2000 TRAIN rows of P with date < D
+      - ``payer_overall_denial_rate_90d_smoothed`` =
+          smoothed rate over TRAIN rows of P with date in [D-90d, D)
+
+    Smoothing: ``(denied + α·prior) / (volume + α)`` with α=25, prior=0.2772.
+
+    Strict-< on service_from_date by construction. Rows missing payer_id /
+    service_from_date receive the prior. Returns a DataFrame indexed
+    identically to ``query_df`` with the 2 columns named above.
+    """
+    cols = list(_RECENCY_FEATURE_NAMES)
+    out = pd.DataFrame(_RECENCY_PRIOR, index=query_df.index, columns=cols, dtype="float32")
+    if len(query_df) == 0 or len(train_df) == 0:
+        return out
+
+    train = train_df[["payer_id", "service_from_date"]].copy()
+    train["_y"] = np.asarray(train_y, dtype="int8")
+    train["_date"] = pd.to_datetime(train["service_from_date"], errors="coerce")
+    train = train.dropna(subset=["payer_id", "_date"]).sort_values(["payer_id", "_date"])
+
+    by_payer: dict[int, tuple[np.ndarray, np.ndarray]] = {}
+    for payer_id, g in train.groupby("payer_id", sort=False):
+        dates = g["_date"].to_numpy(dtype="datetime64[D]")
+        denied = g["_y"].to_numpy(dtype="int32")
+        cum_d = np.concatenate(([0], np.cumsum(denied))).astype("int64")
+        by_payer[int(payer_id)] = (dates, cum_d)
+
+    q_dates = pd.to_datetime(query_df["service_from_date"], errors="coerce")
+    q_pid = query_df["payer_id"]
+    days90 = np.timedelta64(90, "D")
+
+    arr_2k = np.full(len(query_df), _RECENCY_PRIOR, dtype="float32")
+    arr_90d = np.full(len(query_df), _RECENCY_PRIOR, dtype="float32")
+
+    for i, (pid, qd) in enumerate(zip(q_pid, q_dates)):
+        if pid is None or pd.isna(pid) or pd.isna(qd):
+            continue
+        info = by_payer.get(int(pid))
+        if info is None:
+            continue
+        dates, cum_d = info
+        qdate_64 = np.datetime64(pd.Timestamp(qd).date(), "D")
+        high = int(np.searchsorted(dates, qdate_64, side="left"))
+        if high == 0:
+            continue  # no prior train rows; keep prior
+
+        # recent_2k window
+        rk_low = max(0, high - _RECENCY_WINDOW_N)
+        rk_n = high - rk_low
+        rk_d = int(cum_d[high] - cum_d[rk_low])
+        arr_2k[i] = (rk_d + _RECENCY_ALPHA * _RECENCY_PRIOR) / (rk_n + _RECENCY_ALPHA)
+
+        # 90d window
+        cutoff = qdate_64 - days90
+        low = int(np.searchsorted(dates, cutoff, side="left"))
+        nd_n = high - low
+        nd_d = int(cum_d[high] - cum_d[low])
+        arr_90d[i] = (nd_d + _RECENCY_ALPHA * _RECENCY_PRIOR) / (nd_n + _RECENCY_ALPHA)
+
+    out[cols[0]] = arr_2k
+    out[cols[1]] = arr_90d
+    return out
+
+
 def compute_leakage_safe_denial_rates(
     query_df: pd.DataFrame,
     train_df: pd.DataFrame,
@@ -256,6 +343,7 @@ class FeatureBuilder:
         self, session: AsyncSession, df: pd.DataFrame, y: pd.Series,
         *,
         safe_rates: pd.DataFrame | None = None,
+        safe_recency_rates: pd.DataFrame | None = None,
     ) -> FeatureArtifacts:
         # CR-088: populate reference-data lookup from DB if not already loaded.
         # If the caller passed a pre-loaded ref_lookup (predict-time bundle
@@ -300,6 +388,7 @@ class FeatureBuilder:
             encoded_frame=enc_frame,
             fit_time=True,
             safe_rates=safe_rates,
+            safe_recency_rates=safe_recency_rates,
             lifecycle_snap=life_snap,
         )
 
@@ -315,6 +404,7 @@ class FeatureBuilder:
         self, session: AsyncSession, df: pd.DataFrame,
         *,
         safe_rates: pd.DataFrame | None = None,
+        safe_recency_rates: pd.DataFrame | None = None,
     ) -> pd.DataFrame:
         if self.encoder is None:
             raise RuntimeError(
@@ -341,6 +431,7 @@ class FeatureBuilder:
             encoded_frame=enc_frame,
             fit_time=False,
             safe_rates=safe_rates,
+            safe_recency_rates=safe_recency_rates,
             lifecycle_snap=life_snap,
         )
         return X
@@ -446,6 +537,7 @@ class FeatureBuilder:
         encoded_frame: pd.DataFrame,
         fit_time: bool,
         safe_rates: pd.DataFrame | None = None,
+        safe_recency_rates: pd.DataFrame | None = None,
         lifecycle_snap: pd.DataFrame | None = None,
     ) -> pd.DataFrame:
         # Pull common encoded-column slices to feed Cat A / C / D / H
@@ -460,6 +552,8 @@ class FeatureBuilder:
             ref=self.ref_lookup,
             payer_overall_denial=joint_snap.payer_overall,
             payer_taxonomy_encoded=None,  # not target-encoding payer_taxonomy yet
+            payer_recent_2k=joint_snap.payer_recent_2k,
+            payer_90d=joint_snap.payer_90d,
         )
         auth_cols = authorization.compute(df, ref=self.ref_lookup)
         clin_cols = clinical.compute(
@@ -523,6 +617,16 @@ class FeatureBuilder:
             for col in _LEAKAGE_SAFE_FEATURE_NAMES:
                 if col in all_parts.columns and col in aligned.columns:
                     all_parts[col] = aligned[col].astype("float32").fillna(0.0)
+
+        # CR-126B: same pattern for the 2 recency features. Predict time uses
+        # the MV-derived values that coverage.py already wrote; training
+        # overrides with per-row leakage-safe values via
+        # compute_leakage_safe_recency_rates.
+        if safe_recency_rates is not None and len(safe_recency_rates) > 0:
+            aligned = safe_recency_rates.reindex(df.index)
+            for col in _RECENCY_FEATURE_NAMES:
+                if col in all_parts.columns and col in aligned.columns:
+                    all_parts[col] = aligned[col].astype("float32").fillna(_RECENCY_PRIOR)
 
         expected = list(get_feature_columns(
             self.service_variant, self.claim_subtype,

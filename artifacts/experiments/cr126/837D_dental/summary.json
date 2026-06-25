@@ -1,0 +1,106 @@
+{
+  "service_variant": "837D",
+  "claim_subtype": "dental",
+  "include_lifecycle": false,
+  "include_freq7": false,
+  "n_train": 8457,
+  "n_val": 1812,
+  "n_held": 1813,
+  "prevalence": 0.011918556530375766,
+  "threshold": 0.34,
+  "total_gain": 1910.443459033966,
+  "ece": 0.004131486573114259,
+  "held_metrics_overall": {
+    "name": "held_overall",
+    "n": 1813,
+    "prevalence": 0.012134583563154992,
+    "roc_auc": 0.9061976549413737,
+    "pr_auc": 0.22861683552643652,
+    "precision": 0.6666666666666666,
+    "recall": 0.09090909090909091,
+    "f1": 0.16,
+    "brier_cal": 0.010305517353117466
+  },
+  "cohort_metrics": {},
+  "candidate_report": [
+    {
+      "candidate": "recent_2k",
+      "gain": 21.219053268432617,
+      "splits": 62,
+      "gain_share_pct": 1.1106873206895236,
+      "shap_abs": 209.4352264404297,
+      "shap_share_pct": 1.3861152988358816
+    },
+    {
+      "candidate": "recent_5k",
+      "gain": 8.66331672668457,
+      "splits": 40,
+      "gain_share_pct": 0.4534715060902802,
+      "shap_abs": 160.4103546142578,
+      "shap_share_pct": 1.0616516161179534
+    },
+    {
+      "candidate": "recent_10k",
+      "gain": 0.0,
+      "splits": 0,
+      "gain_share_pct": 0.0,
+      "shap_abs": 0.0,
+      "shap_share_pct": 0.0
+    },
+    {
+      "candidate": "90d",
+      "gain": 17.63321304321289,
+      "splits": 80,
+      "gain_share_pct": 0.9229905737241392,
+      "shap_abs": 242.80189514160156,
+      "shap_share_pct": 1.6069475377287872
+    },
+    {
+      "candidate": "lifetime",
+      "gain": 0.0,
+      "splits": 0,
+      "gain_share_pct": 0.0,
+      "shap_abs": 0.0,
+      "shap_share_pct": 0.0
+    }
+  ],
+  "stability": {
+    "recent_2k": {
+      "n_nonzero": 1812,
+      "mean": 0.021920524537563324,
+      "std": 0.024754509329795837,
+      "min": 0.00786666665226221,
+      "max": 0.26653847098350525
+    },
+    "recent_5k": {
+      "n_nonzero": 1812,
+      "mean": 0.02180580049753189,
+      "std": 0.02477901056408882,
+      "min": 0.00769201060757041,
+      "max": 0.26653847098350525
+    },
+    "recent_10k": {
+      "n_nonzero": 1812,
+      "mean": 0.02180580049753189,
+      "std": 0.02477901056408882,
+      "min": 0.00769201060757041,
+      "max": 0.26653847098350525
+    },
+    "90d": {
+      "n_nonzero": 1812,
+      "mean": 0.023022232577204704,
+      "std": 0.027228813618421555,
+      "min": 0.007700927555561066,
+      "max": 0.27720001339912415
+    },
+    "lifetime": {
+      "n_nonzero": 1812,
+      "mean": 0.02180580049753189,
+      "std": 0.02477901056408882,
+      "min": 0.00769201060757041,
+      "max": 0.26653847098350525
+    }
+  },
+  "candidate_compute_seconds": 0.02389693260192871,
+  "feature_columns_n_with_candidates": 118
+}

@@ -31,6 +31,7 @@ from rcm.features.builder import (
     FeatureArtifacts,
     FeatureBuilder,
     compute_leakage_safe_denial_rates,
+    compute_leakage_safe_recency_rates,
 )
 from rcm.features.constants import (
     LOW_PROB_CUTOFF,
@@ -168,6 +169,16 @@ async def train_variant(
     safe_rates_val   = safe_rates_all.loc[df_val.index]
     safe_rates_held  = safe_rates_all.loc[df_held.index]
 
+    # CR-126B: leakage-safe recency rates (2 features). Same train-only-rows
+    # restriction; predict-time path reads from the new mv_payer_denial_rates_*
+    # MVs via coverage.py / joint.py.
+    safe_recency_all = compute_leakage_safe_recency_rates(
+        df, df_train, pd.Series(y_train, index=df_train.index),
+    )
+    safe_recency_train = safe_recency_all.loc[df_train.index]
+    safe_recency_val   = safe_recency_all.loc[df_val.index]
+    safe_recency_held  = safe_recency_all.loc[df_held.index]
+
     # Fit FB on TRAIN only — encoder vocab + rarity_state come from train rows
     builder = FeatureBuilder(
         service_variant=service_variant,
@@ -177,14 +188,17 @@ async def train_variant(
     artifacts = await builder.fit_transform(
         session, df_train, pd.Series(y_train, index=df_train.index),
         safe_rates=safe_rates_train,
+        safe_recency_rates=safe_recency_train,
     )
     X_train = artifacts.features.astype("float32")
 
     # Transform val + held with the fitted FB (with leakage-safe rates)
     X_val  = (await builder.transform(session, df_val,
-                                       safe_rates=safe_rates_val)).astype("float32")
+                                       safe_rates=safe_rates_val,
+                                       safe_recency_rates=safe_recency_val)).astype("float32")
     X_held = (await builder.transform(session, df_held,
-                                       safe_rates=safe_rates_held)).astype("float32")
+                                       safe_rates=safe_rates_held,
+                                       safe_recency_rates=safe_recency_held)).astype("float32")
 
     # Class balance for XGBoost
     spw = (1 - y_train).sum() / max(1, int(y_train.sum()))

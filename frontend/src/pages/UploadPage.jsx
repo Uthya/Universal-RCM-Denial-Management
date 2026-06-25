@@ -279,6 +279,11 @@ function UploadCard({ title, description, accent, onUploadComplete }) {
         const med = predResult.risk_summary?.MEDIUM || 0;
         const low = predResult.risk_summary?.LOW || 0;
         const highRiskClaims = predResult.high_risk_claims || [];
+        // CR-128: per-bucket expected-denial-count. Each bucket carries
+        // {n_claims, expected_denials, expected_std, interval_low,
+        // interval_high, confidence_pct}. Empty/missing → undefined and
+        // CR-131B: empirical forecast (replaces CR-128's bucket_confidence).
+        const forecast = predResult.forecast || null;
 
         // 837 → predicted (model). 835 → actual (payer adjudication).
         const headline = is835
@@ -303,19 +308,17 @@ function UploadCard({ title, description, accent, onUploadComplete }) {
             {/* Risk distribution — predictions only (837). 835 is fact, no pills. */}
             {!is835 && (
               <div className="mt-3 grid grid-cols-3 gap-2 text-center">
-                <div className="rounded-md bg-red-100 border border-red-200 py-2 px-1">
-                  <p className="text-lg font-bold text-red-700">{high}</p>
-                  <p className="text-xs text-red-600 font-medium">HIGH</p>
-                </div>
-                <div className="rounded-md bg-yellow-100 border border-yellow-200 py-2 px-1">
-                  <p className="text-lg font-bold text-yellow-700">{med}</p>
-                  <p className="text-xs text-yellow-600 font-medium">MEDIUM</p>
-                </div>
-                <div className="rounded-md bg-green-100 border border-green-200 py-2 px-1">
-                  <p className="text-lg font-bold text-green-700">{low}</p>
-                  <p className="text-xs text-green-600 font-medium">LOW</p>
-                </div>
+                <BucketPill count={high} label="HIGH" tone="red" />
+                <BucketPill count={med}  label="MEDIUM" tone="yellow" />
+                <BucketPill count={low}  label="LOW" tone="green" />
               </div>
+            )}
+
+            {/* CR-131B forecast banner — empirical denial forecast for the HIGH
+                cohort. Replaces the per-bucket subtitle line that used to live
+                inside BucketPill. */}
+            {!is835 && forecast && forecast.n_high > 0 && (
+              <ForecastBanner forecast={forecast} />
             )}
 
             {highRiskClaims.length > 0 && (
@@ -331,6 +334,83 @@ function UploadCard({ title, description, accent, onUploadComplete }) {
           </div>
         );
       })()}
+    </div>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// BucketPill — risk-distribution count tile. CR-131B removed the per-bucket
+// "expected denials" subtitle that CR-128 added; the empirical forecast now
+// lives in its own ForecastBanner above the HIGH list.
+// ---------------------------------------------------------------------------
+
+const _PILL_TONES = {
+  red:    { box: 'bg-red-100 border-red-200',    label: 'text-red-600',    count: 'text-red-700'    },
+  yellow: { box: 'bg-yellow-100 border-yellow-200', label: 'text-yellow-600', count: 'text-yellow-700' },
+  green:  { box: 'bg-green-100 border-green-200',  label: 'text-green-600', count: 'text-green-700'  },
+};
+
+function BucketPill({ count, label, tone }) {
+  const t = _PILL_TONES[tone] || _PILL_TONES.red;
+  return (
+    <div className={`rounded-md ${t.box} border py-2 px-1`}>
+      <p className={`text-lg font-bold ${t.count}`}>{count}</p>
+      <p className={`text-xs ${t.label} font-medium`}>{label}</p>
+    </div>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// ForecastBanner — CR-131B headline forecast for the HIGH cohort.
+// Reads predResult.forecast (populated by mv_forecast_calibration via the
+// backend forecast engine) and renders the single sentence operators care
+// about: "of N HIGH claims today, ~E will deny once 835s arrive."
+// ---------------------------------------------------------------------------
+
+function ForecastBanner({ forecast }) {
+  const f = forecast || {};
+  if (!f.n_high) return null;
+  const exp = f.expected_denials ?? 0;
+  const lo = f.interval_low ?? 0;
+  const hi = f.interval_high ?? 0;
+  const pct = f.forecast_confidence_pct ?? 0;
+  const histN = f.historical_evidence_count ?? f.historical_sample_size ?? 0;
+  const window = f.data_window_days ?? 90;
+  const fb = f.fallback_distribution || {};
+  const engine = f.engine || 'bucket';
+  const avgSim = f.average_similarity;
+  const isSim = engine === 'similarity';
+  const refreshed = f.last_calibration_refresh
+    ? new Date(f.last_calibration_refresh).toLocaleDateString()
+    : null;
+  return (
+    <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm">
+      <p className="text-blue-900 leading-snug">
+        <span className="font-semibold">{f.n_high} HIGH claim{f.n_high === 1 ? '' : 's'} →</span>{' '}
+        forecast <span className="font-semibold">~{exp.toFixed(1)} denied</span>{' '}
+        <span className="text-blue-700/80">(90% CI: {lo.toFixed(1)}–{hi.toFixed(1)})</span>{' '}
+        <span className="text-blue-700/80">· {Math.round(pct * 100)}% expected denial rate</span>
+      </p>
+      {isSim ? (
+        <p
+          className="text-[11px] text-blue-700/70 mt-1 font-mono leading-tight"
+          title="CR-136 similarity engine: each prediction's probability comes from the K=10 nearest historically adjudicated claims with the same variant, payer, replacement status and a similar calibrated score."
+        >
+          {histN.toLocaleString()} historically similar adjudicated claims retrieved
+          {avgSim != null ? ` · ${Math.round(avgSim * 100)}% avg similarity` : ''}
+          {refreshed ? ` · refreshed ${refreshed}` : ''}
+        </p>
+      ) : (
+        <p
+          className="text-[11px] text-blue-700/70 mt-1 font-mono leading-tight"
+          title="CR-131B bucket forecaster: empirical denial outcomes per (variant, score-decile) over the last 90 days."
+        >
+          Based on {histN.toLocaleString()} adjudicated HIGH claims in last {window} days
+          {refreshed ? ` · refreshed ${refreshed}` : ''}
+        </p>
+      )}
     </div>
   );
 }
@@ -353,6 +433,30 @@ function UploadCard({ title, description, accent, onUploadComplete }) {
 const _BADGE_STYLES = {
   HIGH:   'bg-orange-100 text-orange-700 border border-orange-200',
   DENIED: 'bg-red-100 text-red-700 border border-red-200',
+};
+
+// CR-131B — per-claim dot color is driven by EMPIRICAL bucket precision
+// (the historical denial rate of claims in the same score-decile + variant),
+// NOT by the model's self-reported risk_score. Cutoffs:
+//   p >= 0.90 → deep red   ("will most likely deny" — strong historical signal)
+//   p >= 0.75 → orange     ("likely")
+//   p >= 0.50 → yellow     ("moderate")
+//   p <  0.50 → no dot rendered
+function _empiricalDotCls(empPrec) {
+  if (empPrec == null) return null;
+  if (empPrec >= 0.90) return 'bg-red-600';
+  if (empPrec >= 0.75) return 'bg-orange-500';
+  if (empPrec >= 0.50) return 'bg-yellow-400';
+  return null;
+}
+
+// CR-128B — post-835 outcome icon. Shown only when a remittance has landed
+// for the predicted claim; absent => "pending" (no 835 yet).
+//   denied   (predicted denied AND payer denied)   => green check
+//   approved (predicted denied but payer paid)     => gray cross
+const _OUTCOME_ICON = {
+  denied:   { glyph: '✓', cls: 'text-green-600',  title: 'Predicted denial confirmed by 835' },
+  approved: { glyph: '✗', cls: 'text-gray-400',   title: 'Predicted denial; payer actually paid' },
 };
 
 function HighRiskList({ claims, is835 = false }) {
@@ -396,6 +500,51 @@ function HighRiskList({ claims, is835 = false }) {
                   {!is835 && c.risk_score != null && (
                     <span className="text-[11px] font-mono text-gray-500">
                       {(c.risk_score * 100).toFixed(0)}%
+                    </span>
+                  )}
+                  {/* CR-131B — per-claim dot keyed on EMPIRICAL bucket
+                      precision (historical denial rate of similar claims),
+                      not on the model's self-reported risk_score. Tooltip
+                      surfaces the sample size + fallback level so operators
+                      can audit thin data. */}
+                  {!is835 && (() => {
+                    const cls = _empiricalDotCls(c.empirical_bucket_precision);
+                    if (!cls) return null;
+                    const pct = Math.round(100 * (c.empirical_bucket_precision ?? 0));
+                    // CR-136: prefer similarity-engine evidence when available.
+                    const nFound = c.neighbours_found ?? 0;
+                    let title;
+                    if (nFound > 0) {
+                      const denied = c.neighbours_denied ?? 0;
+                      const factors = (c.matching_factors || []).join(', ');
+                      const sim = c.average_similarity != null
+                        ? `${Math.round(c.average_similarity * 100)}% avg similarity`
+                        : '';
+                      title = `${denied}/${nFound} historically similar claims denied (${pct}%)`
+                        + (sim ? ` · ${sim}` : '')
+                        + (factors ? ` · ${factors}` : '');
+                    } else {
+                      const n = c.empirical_sample_size ?? 0;
+                      const lvl = c.fallback_used || 'unknown';
+                      title = `Historical denial rate ${pct}% on ${n.toLocaleString()} similar claims (${lvl} fallback)`;
+                    }
+                    return (
+                      <span
+                        className={`inline-block w-2 h-2 rounded-full ${cls}`}
+                        title={title}
+                        aria-label={title}
+                      />
+                    );
+                  })()}
+                  {/* CR-128B — post-835 outcome icon. Hidden when no
+                      remittance has arrived yet (actual_outcome is null). */}
+                  {!is835 && _OUTCOME_ICON[c.actual_outcome] && (
+                    <span
+                      className={`text-[12px] font-bold leading-none ${_OUTCOME_ICON[c.actual_outcome].cls}`}
+                      title={_OUTCOME_ICON[c.actual_outcome].title}
+                      aria-label={_OUTCOME_ICON[c.actual_outcome].title}
+                    >
+                      {_OUTCOME_ICON[c.actual_outcome].glyph}
                     </span>
                   )}
                   <span className={`text-[11px] font-semibold rounded px-2 py-0.5 ${badgeCls}`}>

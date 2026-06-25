@@ -212,6 +212,8 @@ _FEATURE_TO_BUCKET: dict[str, tuple[str, str, str]] = {
     "has_secondary_payer":                _COV,
     "payer_overall_denial_rate":          _COV,
     "payer_taxonomy_encoded":             _COV,
+    "payer_overall_denial_rate_recent_2k_smoothed": _COV,
+    "payer_overall_denial_rate_90d_smoothed":       _COV,
 
     # --- Category B — authorization ---
     "has_prior_authorization":          _AUTH,

@@ -242,13 +242,70 @@ class HighRiskClaimItem(BaseModel):
     claim_subtype: str | None = None
     risk_score: float
     risk_level: str
+    # CR-128B: actual adjudication outcome from any matching 835 remittance.
+    # Values: "denied" (status_code='4'), "approved" (status_code in 1/2/3/19/20),
+    # or None when no remittance exists yet. Drives the UI's post-835 ✓/✗ icon.
+    actual_outcome: str | None = None
+    # CR-131B: empirical bucket precision — fraction of historical claims in
+    # the same (variant, score-decile) cell that were actually denied over the
+    # 90-day window. Anchored to ground-truth adjudication, not the model's
+    # self-reported risk_score. The UI's per-row dot is colored by this value.
+    empirical_bucket_precision: float | None = None
+    empirical_sample_size: int = 0
+    # "bucket" | "variant" | "global" | "model" — which fallback ladder level
+    # served this lookup. Surfaces when a forecast rests on thin data.
+    fallback_used: str | None = None
+    # CR-136: per-claim historical similarity evidence (only present when the
+    # similarity engine served this prediction). Operators see "X of Y similar
+    # historical claims were denied" instead of, or in addition to, the bucket
+    # precision.
+    neighbours_found: int = 0
+    neighbours_denied: int = 0
+    neighbours_paid: int = 0
+    average_similarity: float | None = None     # 0..1; 1 = identical neighbour
+    matching_factors: list[str] = Field(default_factory=list)
     top_denial_reasons: list[DenialReasonItem] = Field(default_factory=list)
+
+
+class Forecast(BaseModel):
+    """CR-131B — batch-level empirical denial forecast for a HIGH cohort.
+
+    Each HIGH claim's per-claim probability ``p_i`` comes from the historical
+    precision of the (variant, score-decile) cell it falls in — NOT from the
+    model's calibrated ``risk_score``. ``expected_denials = Σp_i`` is the
+    Poisson-Binomial expected count; the 90% CI uses the
+    per-claim-independence std ``√Σp_i(1-p_i)``.
+
+    ``fallback_distribution`` reports the fraction of HIGH claims served by
+    each ladder level (bucket / variant / global / model). A forecast where
+    most claims fell back to "model" indicates the calibration MV is empty
+    or stale — typically a fresh deployment.
+    """
+    n_high: int = 0
+    expected_denials: float = 0.0
+    expected_approvals: float = 0.0
+    forecast_confidence_pct: float = 0.0
+    interval_low: float = 0.0
+    interval_high: float = 0.0
+    historical_sample_size: int = 0
+    data_window_days: int = 90
+    fallback_distribution: dict[str, float] = Field(default_factory=dict)
+    last_calibration_refresh: str | None = None
+    # CR-136 — historical similarity evidence (populated when the similarity
+    # engine served this batch).  ``engine`` is one of "similarity" |
+    # "bucket" so operators see which forecast layer produced the numbers.
+    engine: str = "bucket"
+    historical_evidence_count: int = 0
+    average_similarity: float | None = None
 
 
 class PredictFileResponse(BaseModel):
     edi_file_id: int
     predicted_claims: int
     risk_summary: dict[str, int]
+    # CR-131B: empirical denial forecast (replaces CR-128's bucket_confidence,
+    # which was a sum of model-self-reported probabilities).
+    forecast: Forecast = Field(default_factory=Forecast)
     high_risk_claims: list[HighRiskClaimItem] = Field(default_factory=list)
 
 

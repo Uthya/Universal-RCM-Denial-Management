@@ -1,0 +1,88 @@
+{
+  "service_variant": "837D",
+  "claim_subtype": "dental",
+  "include_lifecycle": false,
+  "include_freq7": false,
+  "n_train": 8457,
+  "n_val": 1812,
+  "n_held": 1813,
+  "prevalence": 0.011918556530375766,
+  "threshold": 0.34,
+  "total_gain": 1974.7534837722778,
+  "ece": 0.005945993508779898,
+  "held_overall": {
+    "n": 1813,
+    "prevalence": 0.012134583563154992,
+    "roc_auc": 0.9488350845134765,
+    "pr_auc": 0.22425724284490517,
+    "precision": 0.6,
+    "recall": 0.13636363636363635,
+    "f1": 0.2222222222222222,
+    "brier": 0.010736840777099133,
+    "fpr": 0.0011166945840312675
+  },
+  "cohort_metrics": {},
+  "candidate_report": [
+    {
+      "candidate": "payer_overall_recent_2k",
+      "mode": "recent_2k",
+      "gain": 19.855545043945312,
+      "splits": 54,
+      "gain_share_pct": 1.0054695539017968,
+      "shap_abs": 153.0963897705078,
+      "shap_share_pct": 0.9851019046809946,
+      "activation_pct": 99.85929481873862
+    },
+    {
+      "candidate": "payer_overall_90d",
+      "mode": "90d",
+      "gain": 19.0191593170166,
+      "splits": 59,
+      "gain_share_pct": 0.9631156229528561,
+      "shap_abs": 195.03515625,
+      "shap_share_pct": 1.2549577700011958,
+      "activation_pct": 99.85929481873862
+    },
+    {
+      "candidate": "payer_cpt_recent_2k",
+      "mode": "recent_2k",
+      "gain": 13.533252716064453,
+      "splits": 103,
+      "gain_share_pct": 0.685313525322286,
+      "shap_abs": 363.6343994140625,
+      "shap_share_pct": 2.33981310733252,
+      "activation_pct": 99.81791094189704
+    },
+    {
+      "candidate": "payer_dx_recent_2k",
+      "mode": "recent_2k",
+      "gain": 10.804045677185059,
+      "splits": 27,
+      "gain_share_pct": 0.5471085766384675,
+      "shap_abs": 103.58523559570312,
+      "shap_share_pct": 0.6665213532149135,
+      "activation_pct": 33.082271147161066
+    },
+    {
+      "candidate": "payer_cpt_90d",
+      "mode": "90d",
+      "gain": 14.472641944885254,
+      "splits": 50,
+      "gain_share_pct": 0.7328834745103907,
+      "shap_abs": 127.904296875,
+      "shap_share_pct": 0.8230028589003214,
+      "activation_pct": 99.81791094189704
+    },
+    {
+      "candidate": "payer_dx_90d",
+      "mode": "90d",
+      "gain": 6.481088638305664,
+      "splits": 9,
+      "gain_share_pct": 0.32819735179933185,
+      "shap_abs": 36.195796966552734,
+      "shap_share_pct": 0.2329026085242571,
+      "activation_pct": 33.082271147161066
+    }
+  ],
+  "feature_columns_n_aug": 120
+}

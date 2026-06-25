@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 
 import asyncpg
 
@@ -39,6 +40,65 @@ logger = logging.getLogger(__name__)
 
 DEBOUNCE_SECONDS = 5
 TARGET_MV = "mv_claim_labels"
+
+# CR-127: every denial-rate MV downstream of mv_claim_labels. PostgreSQL does
+# NOT cascade-refresh dependent MVs when mv_claim_labels is refreshed, so each
+# one must be refreshed explicitly. Order doesn't matter among siblings (all
+# 10 read mv_claim_labels directly; none read each other) but mv_claim_labels
+# MUST be refreshed first because every entry below depends on its rows.
+_DOWNSTREAM_DENIAL_MVS: tuple[str, ...] = (
+    # 8 from migration 0010 (CR-010)
+    "mv_payer_denial_rates",
+    "mv_payer_cpt_denial_rate",
+    "mv_payer_dx_denial_rate",
+    "mv_payer_pos_denial_rate",
+    "mv_cpt_dx_denial_rate",
+    "mv_provider_denial_profiles",
+    "mv_provider_payer_denial_rate",
+    "mv_provider_cpt_denial_rate",
+    # 2 from migration 0018 (CR-126B)
+    "mv_payer_denial_rates_recent_2k",
+    "mv_payer_denial_rates_90d",
+)
+
+# CR-131B: forecast calibration MV. Reads from prediction_log + remittance_claims,
+# NOT from mv_claim_labels. Included here so upload-driven refreshes keep the
+# forecast layer fresh as new 835s land. Independent of the denial-rate cascade
+# (it can refresh in parallel) but listed last so a failed denial-rate MV
+# doesn't block the forecast refresh.
+_FORECAST_MVS: tuple[str, ...] = (
+    "mv_forecast_calibration",
+    # CR-136: historical similarity engine. Refreshed in the same cascade so
+    # similarity neighbours track new 835s without a separate cron.
+    "mv_forecast_history",
+)
+
+
+async def refresh_denial_rate_cascade(
+    conn: asyncpg.Connection,
+) -> dict[str, float]:
+    """Refresh ``mv_claim_labels`` then every downstream denial-rate MV in
+    dependency order. Per-MV failures are logged and skipped (do not abort
+    the cascade). Returns ``{mv_name: elapsed_seconds}`` for telemetry; a
+    -1.0 elapsed indicates the refresh raised.
+
+    CR-127: introduced to fix the staleness gap pre-CR-126B where only the
+    root MV was refreshed and all 10 denial-rate MVs went stale immediately.
+    """
+    timings: dict[str, float] = {}
+    for mv in (TARGET_MV, *_DOWNSTREAM_DENIAL_MVS, *_FORECAST_MVS):
+        t0 = time.perf_counter()
+        try:
+            await conn.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {mv}")
+        except Exception as exc:
+            logger.warning(
+                "CR-127 refresh: %s failed; %s: %s",
+                mv, type(exc).__name__, exc,
+            )
+            timings[mv] = -1.0
+            continue
+        timings[mv] = time.perf_counter() - t0
+    return timings
 
 # Module-level coalescing state. Safe because the FastAPI worker is a single
 # event loop; asyncio is cooperatively scheduled so no two coroutines can
@@ -102,16 +162,15 @@ async def _do_refresh() -> None:
         )
         return
     try:
-        try:
-            await conn.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {TARGET_MV}")
-            row_count = await conn.fetchval(f"SELECT count(*) FROM {TARGET_MV}")
-            logger.info(
-                "CR-090 mv_refresh: %s refreshed (%d rows)", TARGET_MV, row_count,
-            )
-        except Exception as exc:
-            logger.warning(
-                "CR-090 mv_refresh: REFRESH failed on %s; %s: %s",
-                TARGET_MV, type(exc).__name__, exc,
-            )
+        timings = await refresh_denial_rate_cascade(conn)
+        total = sum(t for t in timings.values() if t > 0)
+        n_ok = sum(1 for t in timings.values() if t > 0)
+        n_fail = len(timings) - n_ok
+        row_count = await conn.fetchval(f"SELECT count(*) FROM {TARGET_MV}")
+        logger.info(
+            "CR-090+CR-127 mv_refresh: cascade complete in %.2fs (%d ok, %d fail). "
+            "%s now has %d rows.",
+            total, n_ok, n_fail, TARGET_MV, row_count,
+        )
     finally:
         await conn.close()
